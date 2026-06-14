@@ -1,0 +1,253 @@
+/* right-menu.less */
+[class^="right-menu-item"] {
+  cursor: pointer;
+  color: #9b9d9f;
+  padding: 1em 2.5em 1em 3em;
+  position: relative;
+  font-size: 100%;
+  border-bottom: 1px solid #41474e;
+}
+[class^="right-menu-item"]:after {
+  display: block;
+  content: " ";
+  position: absolute;
+  left: 1.2em;
+  top: 1.2em;
+  background: url("/images/overall-sprite.png") no-repeat -108px center;
+  width: 15px;
+  height: 16px;
+  opacity: 1;
+}
+.right-menu-item-home:after {
+  background-position: -108px center;
+  width: 15px;
+  height: 16px;
+}
+.right-menu-item-profile:after {
+  background: url("/images/profile-icon.png") no-repeat center center !important;
+  width: 17px;
+  height: 17px;
+}
+.right-menu-item-uncat span {
+  display: block;
+  position: absolute;
+  right: 19px;
+  text-align: center;
+  width: 3.5ex;
+  top: 23px;
+  font-size: 12px;
+  background-color: #ffba01;
+  color: #000;
+  line-height: 14px;
+  border-radius: 1px;
+}
+.right-menu-item-uncat:after {
+  background-position: -472px center;
+  width: 14px;
+  height: 16px;
+}
+.right-angular-tree {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  font-size: 100%;
+}
+.right-angular-tree > ul {
+  list-style: none;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+}
+.right-angular-tree > ul > li {
+  position: relative;
+}
+.right-angular-tree > ul > li:after {
+  display: block;
+  width: 15px;
+  height: 20px;
+  position: absolute;
+  left: 1.2em;
+  top: 1em;
+  content: "";
+  background: url("../../images/overall-sprite.png") no-repeat -123px center;
+}
+.right-angular-tree > ul > li > i {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  top: 13px;
+  width: 10px;
+  height: 10px;
+  box-sizing: content-box;
+  border: 10px solid #353c43;
+  background: url("../../images/overall-sprite.png") no-repeat -379px center;
+}
+.right-angular-tree > ul > li > i.expanded {
+  background: url("../../images/overall-sprite.png") no-repeat -368px center;
+}
+.right-angular-tree > ul > li > i.expanded ~ span,
+.right-angular-tree > ul > li > i.expanded ~ label {
+  color: #fff;
+}
+.right-angular-tree > ul > li > i.expanded.ng-hide ~ span,
+.right-angular-tree > ul > li > i.expanded.ng-hide ~ label {
+  color: #9b9d9f;
+}
+.right-angular-tree > ul > li > i.normal {
+  display: none;
+}
+.right-angular-tree > ul > li > i.normal ~ div {
+  display: none;
+}
+.right-angular-tree > ul > li > i.normal.ng-hide ~ div {
+  display: block;
+}
+.right-angular-tree > ul > li > span,
+.right-angular-tree > ul > li > label {
+  display: block;
+  position: relative;
+  z-index: 1;
+  color: #9b9d9f;
+  padding: 1em 2.5em 1em 3em;
+  border-bottom: 1px solid #41474e;
+  cursor: pointer;
+}
+.right-angular-tree > ul > li > div {
+  background-color: #292e35;
+  padding: 0.5em 0;
+  transition: all .3s;
+}
+.right-angular-tree > ul > li > div ul {
+  padding: 0;
+  list-style: none;
+}
+.right-angular-tree > ul > li > div ul li {
+  padding-left: 1em;
+  position: relative;
+}
+.right-angular-tree > ul > li > div ul li > i {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  left: 1em;
+  top: 1.2ex;
+  width: 19px;
+  height: 20px;
+  background: url("../../images/overall-sprite.png") no-repeat -139px center;
+  opacity: .7;
+}
+.right-angular-tree > ul > li > div ul li > i.expanded {
+  opacity: 1;
+  background-position: -159px center;
+}
+.right-angular-tree > ul > li > div ul li > i.expanded ~ span:first-of-type,
+.right-angular-tree > ul > li > div ul li > i.expanded ~ label:first-of-type {
+  color: #fff;
+}
+.right-angular-tree > ul > li > div ul li > i.expanded.ng-hide ~ span:first-of-type,
+.right-angular-tree > ul > li > div ul li > i.expanded.ng-hide ~ label:first-of-type {
+  color: #9b9d9f;
+}
+.right-angular-tree > ul > li > div ul li > i.expanded.ng-hide ~ span:first-of-type.selected,
+.right-angular-tree > ul > li > div ul li > i.expanded.ng-hide ~ label:first-of-type.selected {
+  color: #fff;
+}
+.right-angular-tree > ul > li > div ul li > i.normal {
+  background-image: none;
+  display: none;
+}
+.right-angular-tree > ul > li > div ul li > i.normal ~ span,
+.right-angular-tree > ul > li > div ul li > i.normal ~ label {
+  padding-left: 2em;
+}
+.right-angular-tree > ul > li > div ul li > i.normal.ng-hide ~ span,
+.right-angular-tree > ul > li > div ul li > i.normal.ng-hide ~ label {
+  padding-left: 2em;
+}
+.right-angular-tree > ul > li > div ul li > i.normal ~ div {
+  display: none;
+}
+.right-angular-tree > ul > li > div ul li > i.normal.ng-hide ~ div {
+  display: block;
+}
+.right-angular-tree > ul > li > div ul li > span,
+.right-angular-tree > ul > li > div ul li label {
+  display: block;
+  position: relative;
+  z-index: 1;
+  color: #9b9d9f;
+  padding: 1ex 0.2em 1ex 2em;
+  cursor: pointer;
+}
+.right-angular-tree > ul > li[id="2dir"]:after {
+  width: 20px;
+  height: 20px;
+  top: 15px;
+  background-image: url("../../personal_images/right-panel-history.svg");
+  background-position: center;
+}
+.right-angular-tree > ul > li[id="2dir"] > div > ul > li > i.collapsed {
+  display: none !important;
+}
+.right-angular-tree > ul > li[id="2dir"] > div > ul > li > i.expanded {
+  display: none !important;
+}
+div[data-tree-model]:not([class]) ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: none;
+  overflow: hidden;
+}
+div[data-tree-model]:not([class]) li {
+  position: relative;
+  padding: 0 0 0 20px;
+  line-height: 20px;
+}
+div[data-tree-model]:not([class]) li .selected- {
+  background-color: #aaddff;
+  font-weight: bold;
+  padding: 1px 5px;
+}
+div[data-tree-model]:not([class]) li i,
+div[data-tree-model]:not([class]) li span {
+  cursor: pointer;
+}
+.tabs-wrap > .archive-block-column,
+.tabs-wrap > .archive-block-viewport {
+  height: 100%;
+}
+.tabs-wrap > .archive-block-column,
+.tabs-wrap > .archive-block-column > .archive-block-column-appendix {
+  background-color: #353c43;
+  color: #9b9d9f;
+}
+.tabs-wrap > .archive-block-column p,
+.tabs-wrap > .archive-block-column > .archive-block-column-appendix p {
+  padding: 0 24px;
+}
+.tabs-wrap > .archive-block-column > .archive-block-column-appendix {
+  height: 100%;
+  overflow-y: auto;
+}
+.archive-block-column .mCustomScrollbar .mCustomScrollBox.mCSB_inside > .mCSB_container {
+  margin-right: 16px;
+}
+.archive-block-column .mCSB_scrollTools {
+  width: 16px;
+}
+.archive-block-column .mCustomScrollbar .mCustomScrollBox .mCSB_scrollTools .mCSB_draggerRail {
+  width: 2px;
+  border-radius: 16px;
+}
+.archive-block-column .mCustomScrollbar .mCustomScrollBox .mCSB_scrollTools .mCSB_dragger .mCSB_dragger_bar {
+  width: 4px;
+  border-radius: 16px;
+}
+.archive-block-column .mCSB_scrollTools .mCSB_dragger .mCSB_dragger_bar {
+  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.75);
+  filter: "alpha(opacity=75)";
+  -ms-filter: "alpha(opacity=75)";
+}

@@ -1,0 +1,1483 @@
+var PNArchive = angular
+	.module("PNArchive", ['angularTreeview'/*, 'ngFileUpload', 'ngRoute'*/])
+	.controller('PNArchiveController', function ($scope, $compile, $timeout, $interval) {
+
+
+	$scope.token = $('#personal-cabinet [name=csrf]').val();
+	$scope.model = {};
+	$scope.model.list = [];
+	$scope.model.element = {};
+	$scope.model.section = {};
+	$scope.model.navigation = [];
+	$scope.model.mainHead = '';         // главный заголовок
+	$scope.model.mainSection = {};      // подборка
+
+	$scope.userAuth = false;
+
+	$scope.selected = {};
+	$scope.selectedCount = 0;
+
+	$scope.unsortedNum = 0;             // количество элементов в несортированных
+
+	$scope.sortList = [
+		{name: 'По дате добавления', code: 'CREATED_DATETIME'},
+		{name: 'По названию', code: 'NAME'}
+	];
+	$scope.sortasc = '-';
+	$scope.sortparam = '';
+
+	$scope.sectionType = 1;
+
+	$scope.catalogTree = [];            // полный каталог разделов в личном архиве пользователя
+	$scope.catalogTreeRight = [{NAME: 'Подборки документов', SUBDIR: [], ID: 0, collapsed: true}];
+	$scope.catalogTreeTop = [];
+	$scope.treeTemplate = {};
+
+	$scope.modalWindowList = [];        // очередь сообщений
+	$scope.modalWindowShowStatus = false;
+
+	// описание форм
+	$scope.form = {};
+	$scope.form.addDirForm = {};
+	$scope.form.addDirForm.name = '';
+	$scope.form.renameDirForm = {};
+	$scope.form.renameDirForm.name = '';
+
+	$scope.form.userLogin = {};
+	$scope.form.userLogin.login = '';
+	$scope.form.userLogin.password = '';
+
+	$scope.form.userRegister = {};
+	$scope.form.userRegister.login = '';
+	$scope.form.userRegister.email = '';
+	$scope.form.userRegister.password = '';
+
+
+	$scope.docInfoParse = function (o) {
+
+		var info = '';
+		$.each(o, function (k, v) {
+			if (k == 'Заголовок') {
+				info += '<h4>' + v + '</h4>';
+			} else if (k == 'Медаль') {
+				info += '<img src="' + v + '" /><br />';
+			} else {
+				info += '<div class="dt">' + k + '</div><div class="dd">' + v + '</div>';
+			}
+		});
+		if (info != '') {
+			$('.doc-info-wrapper').html(info);
+			$('.doc-info-scrollable-wrapper').toggleClass('inserted-data', true);
+		} else {
+			$('.doc-info-scrollable-wrapper').toggleClass('inserted-data', false);
+		}
+	};
+
+
+	$scope.$watch('model.section', function () {
+		if ($scope.model.section.NAME) {
+			$scope.model.mainHead = $scope.model.section.NAME;
+		}
+	});
+
+
+	$scope.showDetailContainer = function () {
+		if ($scope.model.element.ID) {
+			if ($scope.model.element.DOCUMENT_URL.length > 0 || ($scope.model.element.CONTENT.length > 0 && !$.isNumeric($scope.model.element.CONTENT))) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+
+	/**
+	 * отслеживаем изменения в model.element
+	 */
+	$scope.$watch('model.element', function () {
+		if ($scope.model.element.ID) {
+
+			if ($scope.model.section.ID != -1) {
+				$scope.save_state($scope.model.section.ID);
+			} else {
+				$scope.save_state();
+			}
+
+			$('.doc-info-wrapper').html('');
+			$('.mapster_el').attr('src', '');
+
+			$scope.model.mainHead = $scope.model.element.NAME;
+
+			// переход в режим детального просмотра документа
+			//angular.element(document.querySelector("[data-wrapper='detail']")).css('display', 'block');
+			//angular.element(document.querySelector("[data-wrapper='cataloglist']")).css('display', 'none');
+
+			if ($scope.model.element.DOCUMENT_URL.length > 0) {
+				//console.log($scope.model.element.DOCUMENT_URL, $scope.model.element.CONTENT);
+				initImageFromData({img_link: $scope.model.element.DOCUMENT_URL, id_page: $scope.model.section.ID});
+				if ($scope.model.element.DESC.length > 0) {
+					//$('.doc-info-wrapper').html($scope.model.element.DESC);
+					var f = JSON.parse($scope.model.element.DESC);
+					//console.log(f);
+					$scope.docInfoParse(f);
+				} else {
+					$('.doc-info-scrollable-wrapper').toggleClass('inserted-data', false);
+				}
+			} else if ($scope.model.element.CONTENT.length > 0 && !$.isNumeric($scope.model.element.CONTENT)) {
+				initImageFromData({img_link: $scope.model.element.CONTENT, id_page: $scope.model.section.ID});
+				$('.doc-info-scrollable-wrapper').toggleClass('inserted-data', false);
+			} else {
+				$('.doc-info-scrollable-wrapper').toggleClass('inserted-data', false);
+				$('#image').attr('src', '');
+			}
+
+
+			if ($scope.model.element.INDEX_ID != 'no-index') {
+				switch ($scope.model.element.TYPE_ID) {
+					case 'operation':
+						url = '/ops/detail/' + $scope.model.element.CONTENT + '/';
+						break;
+					case 'zahoronenie':
+						url = '/memorial/burial/' + $scope.model.element.CONTENT;
+						break;
+					case 'operation-image':
+						url = $scope.model.element.CONTENT;
+						return true;
+						break;
+					case 'magazine':
+						url = '/jbd/' + $scope.model.element.CONTENT + '/';
+						break;
+					case 'dou':
+						url = '/dou/' + $scope.model.element.CONTENT + '/';
+						break;
+					case 'commander':
+						url = '/commander/' + $scope.model.element.CONTENT + '/';
+						break;
+					case 'hospital':
+						url = '/memorial/hospital/' + $scope.model.element.CONTENT;
+						break;
+					default:
+						url = '/heroes/' + $scope.model.element.INDEX_ID + '-' + $scope.model.element.TYPE_ID + $scope.model.element.CONTENT + '/';
+				}
+			} else {
+				switch ($scope.model.element.TYPE_ID) {
+					case 'image':
+						url = $scope.model.element.CONTENT;
+						//return true;
+						break;
+					case 'uploaded':
+						url = $scope.model.element.IMAGE;
+						//return true;
+						break;
+					default:
+						url = $scope.model.element.CONTENT;
+				}
+			}
+
+			//console.log(url);
+			$('[data-btn="fullinfo"]').unbind();
+			$('[data-btn="fullinfo"]').click(function () {
+				window.location.href = url;
+			});
+
+
+		} else {
+			// переход в режим просмотра каталога
+			//angular.element(document.querySelector("[data-wrapper='detail']")).css('display', 'none');
+			//angular.element(document.querySelector("[data-wrapper='cataloglist']")).css('display', 'block');
+			$scope.model.mainHead = $scope.model.section.NAME;
+		}
+	});
+
+
+	/**
+	 * Обработка кнопки перемещения
+	 */
+	$scope.moveBtn = function () {
+		if (Object.keys($scope.selected).length == 0) return true;
+		var targetId = $(".top-angular-tree input:checked").val();
+		if (typeof targetId == 'undefined') {
+			var content = angular.element('<p>Выберите конечную директорию!</p>' +
+				'<button type="button" class="btn btn-primary" data-dismiss="modal">ОК</button>');
+			$compile(content)($scope);
+			$scope.addMessage({
+				title: 'Ошибка',
+				content: content,
+				onSuccess: function () {
+				}
+			});
+			return true;
+		} else if ($.isNumeric(parseInt(targetId))) {
+			var content = angular.element('<p>Вы действительно хотите выполнить перемещение?</p>' +
+				'<button type="button" class="btn btn-primary" data-dismiss="modal">Отмена</button>' +
+				'<button type="button" class="btn btn-primary" ng-click="moveBtnSubmit(' + targetId + ')">Продолжить</button>');
+			$compile(content)($scope);
+			$scope.addMessage({
+				title: 'Перемещение',
+				content: content,
+				onSuccess: function () {
+				}
+			});
+		}
+	};
+
+	$scope.moveBtnSubmit = function (targetId) {
+		$scope.modalWindowHide();
+		$scope.query({
+			ACTION: "MOVE_LIST",
+			DOC_LIST: JSON.stringify($scope.selected),
+			TARGET_DIR: targetId
+		}, function (data) {
+			$scope.getArchiveCatalog($scope.model.section.ID, true);
+			$scope.clearSelected();
+			$scope.getCatalogTree();
+			// if ($scope.model.section.ID && $scope.model.section.ID == -1) $scope.getUnsortedNum(); // забираем количество Необработанных документов
+		});
+	};
+
+	/**
+	 * Изменение порядка сортировки ASC|DESC
+	 */
+	$scope.changeSortAsc = function () {
+		if ($scope.sortasc == '') {
+			$scope.sortasc = '-';
+			$('[data-type="sortasc"]').toggleClass('sort-asc', false).toggleClass('sort-desc', true);
+		} else {
+			$scope.sortasc = '';
+			$('[data-type="sortasc"]').toggleClass('sort-desc', false).toggleClass('sort-asc', true);
+		}
+		$scope.sortparam = $scope.sortasc + $scope.delMinusForSort($scope.sortparam);
+	};
+
+	$scope.delMinusForSort = function (str) {
+		if (str[0] && str[0] == '-') {
+			str = str.substr(1, str.length);
+		}
+		return str;
+	};
+
+	/**
+	 * Изменение сортировки списка элементов
+	 * @returns {boolean}
+	 */
+	$scope.changeSort = function () {
+		if (!this.s) return false;
+		$scope.sortparam = $scope.sortasc + this.s.code;
+		$('[data-type="sortname"]').text(this.s.name);
+		// if ($scope.sortparam != '' && $scope.sortList[0].code != '')
+		// 	$scope.sortList.unshift({name: 'Выберите сортировку', code: ''});
+		/*if(this.s.code == '' && $scope.sortList[0].code == '')
+		 delete($scope.sortList[0]);*/
+	};
+
+	$scope.hasDirInSelected = function () {
+		var r = false;
+		$.each($scope.selected, function () {
+			if (this.doctype == 'section') r = true;
+		});
+		return r;
+	};
+
+	$scope.renameBtn = function () {
+		if (!$scope.hasDirInSelected()) {
+			var content = angular.element('<p>Не выделено ни одной подборки!</p>' +
+				'<button type="button" class="btn btn-primary" data-dismiss="modal">ОК</button>');
+			$compile(content)($scope);
+			$scope.addMessage({
+				title: 'Ошибка',
+				content: content,
+				onSuccess: function () {
+				}
+			});
+			return true;
+		}
+
+		$.each($scope.selected, function () {
+			if (this.doctype == 'section') {
+				var content = angular.element('<p>Введите новое название</p>' +
+					'<form name="renameDirForm' + this.ID + '" ng-submit="renameDirSubmit(renameDirForm' + this.ID + ', ' + this.ID + ')">' +
+					'<p><input class="dirName form-control" name="dirName" ng-maxlength="50" type="text" ng-model="form.renameDirForm.name" required />' +
+					'<br /><span class="error" ng-show="renameDirForm' + this.ID + '.dirName.$error.required && renameDirForm' + this.ID + '.dirName.$dirty">Название подборки не должно быть пустым</span>' +
+					'<span class="error" ng-show="renameDirForm' + this.ID + '.dirName.$error.maxlength && renameDirForm' + this.ID + '.dirName.$dirty">Название подборки не должно превышать 50 символов</span></p>' +
+					'<button type="button" class="btn btn-primary" data-dismiss="modal">Отменить</button>' +
+					'<button type="submit" class="btn btn-primary">Сохранить</button>' +
+					'</form>');
+				$compile(content)($scope);
+				var _this = this;
+				$scope.addMessage({
+					title: 'Переименование подборки',
+					content: content,
+					onSuccess: function () {
+						$scope.form.renameDirForm.name = _this.NAME;
+					}
+				});
+			}
+		});
+	};
+
+	$scope.renameDirSubmit = function (form, id) {
+
+		// если форма не изменялась, то просто закрываем ее
+		if (!form.$dirty) {
+			$scope.modalWindowHide();
+			return true;
+		}
+
+		// если валидация пройдена
+		if (form.$valid) {
+			$scope.modalWindowHide();
+			var name = $scope.form.renameDirForm.name;
+			$scope.query({
+				ACTION: "RENAME",
+				DIR_ID: id,
+				NAME: name
+			}, function (data) {
+				if (typeof data == 'object') {
+					$scope.getArchiveCatalog($scope.model.section.ID, true);
+					$scope.clearSelected();
+					$scope.getCatalogTree();
+				}
+			});
+
+
+		}
+	};
+
+
+	/**
+	 * Удаление выделенных элементов
+	 * @returns {boolean}
+	 */
+	$scope.delBtn = function () {
+		if (Object.keys($scope.selected).length == 0) return true;
+		var content = angular.element('<p>Вы действительно хотите выполнить удаление?</p><button type="button" class="btn btn-primary" data-dismiss="modal">Отменить</button><button type="button" class="btn btn-danger del-confirm" ng-click="confirmDelBtn(); modalWindowHide();">Продолжить удаление</button>');
+		$compile(content)($scope);
+		$scope.addMessage({
+			title: 'Удаление подборки',
+			content: content,
+			onSuccess: function () {
+			}
+		});
+	};
+
+	$scope.confirmDelBtn = function () {
+		var s = {};
+		$.each($scope.selected, function (k, v) {
+			s[k] = {ID: v.ID, SECTION_ID: v.SECTION_ID, doctype: v.doctype, PARENT_ID: v.PARENT_ID};
+		});
+		$scope.query({"ACTION": "DELETE_LIST", DOC_LIST: JSON.stringify(s)}, function (data) {
+			if (typeof data == 'object') {
+				$scope.getArchiveCatalog($scope.model.section.ID, true); // забираем содержимое директории
+				$scope.clearSelected(); // выходим из режима выделения
+				$scope.getCatalogTree(); // забираем дерево для меню
+				// $scope.getUnsortedNum(); // забираем количество Необработанных документов
+
+				$.each(data, function (id, v) {
+					var name;
+					if (v.ERROR) {
+						if (v.ERROR == 'NOT_EMPTY') {
+							name = $scope.getElementNameByIdFromList(id);
+							var content = angular.element('<p>Подборка <b>' + name + '</b> не пустая. Подтвердите удаление.</p><button type="button" class="btn btn-primary" data-dismiss="modal">Отменить</button><button type="button" class="btn btn-danger" ng-click="confirmRecursiveDel(' + id + '); modalWindowHide();">Продолжить удаление</button>');
+							$compile(content)($scope);
+							$scope.addMessage({
+								title: 'Удаление подборки',
+								content: content,
+								onSuccess: function () {
+								}
+							});
+						}
+					}
+				});
+
+			}
+		});
+	};
+
+	$scope.confirmRecursiveDel = function (id) {
+		$scope.query({"ACTION": "DELETE_DIR", DIR_ID: id, RECURSIVE: true}, function (data) {
+			if (typeof data == 'object') {
+				$scope.getArchiveCatalog($scope.model.section.ID, true);
+				$scope.clearSelected();
+				$scope.getCatalogTree();
+			}
+		});
+	};
+
+	$scope.addMessage = function (modalObj) {
+		$scope.modalWindowList.push(modalObj);
+		//console.log('$scope.modalWindowList', $scope.modalWindowList);
+		$scope.checkModalList();
+	};
+
+	$scope.checkModalList = function () {
+		if ($scope.modalWindowList.length > 0) {
+			if ($scope.modalWindowShowStatus == false) {
+				var modal = $scope.modalWindowList.shift();
+				$scope.modalWindowShow(modal);
+			}
+		}
+	};
+
+	$scope.modalWindowShow = function (param) {
+		$scope.modalWindowShowStatus = true;
+		if (param.title) angular.element(document.querySelector("#overallModal .modal-title")).text(param.title);
+		if (param.content) angular.element(document.querySelector("#overallModal .modal-body .text-center")).html(param.content);
+		if (param.onSuccess) param.onSuccess();
+		$('#overallModal').modal();
+	};
+
+	$scope.modalWindowHide = function () {
+		$('#overallModal').modal('hide');
+	};
+
+	$('#overallModal').on('hidden.bs.modal', function (e) {
+		//$('#overallModal').modal();
+		angular.element(document.querySelector("#overallModal .modal-title")).text('');
+		angular.element(document.querySelector("#overallModal .modal-body .text-center")).html('');
+		$scope.modalWindowShowStatus = false;
+		$scope.checkModalList();
+	});
+
+	$scope.getElementNameByIdFromList = function (id) {
+		var name = id;
+		$.each($scope.model.list, function () {
+			if (this.ID == id) {
+				name = this.NAME;
+			}
+		});
+		return name;
+	};
+
+	$scope.isDirectory = function (doctype) {
+		if (doctype == 'section') return true;
+		return false;
+	};
+
+	/**
+	 * Отмена выделения элементов
+	 */
+	$scope.clearSelected = function () {
+		$scope.selected = {};
+		$scope.selectedCount = 0;
+		$('[data-wrapper="cataloglist"]').find('input:checked').prop('checked', false);
+		$('[data-wrapper="cataloglist"]').removeClass('has-selected');
+		$('.selected-panel').toggleClass('showed', false);
+		$('[data-doc="itemwrapper"]').toggleClass('item-selected', false);
+	};
+
+	/**
+	 * Выделение элемента
+	 * @param element
+	 */
+	$scope.addToSelected = function (element) {
+		if (this.e) { // если клик по элементу каталога
+			element = this.e;
+		}
+		$('.top-angular-tree :radio').removeProp('disabled').prop('checked', false);
+		//console.log(element);
+
+		if ($scope.selected[element.ID + element.doctype]) {
+			delete($scope.selected[element.ID + element.doctype]);
+			$('#' + element.ID + element.doctype).toggleClass('item-selected', false);
+		} else {
+			$scope.selected[element.ID + element.doctype] = element;
+			$('#' + element.ID + element.doctype).toggleClass('item-selected', true);
+		}
+		//console.log($scope.selected);
+
+		var numChecked = parseInt(Object.keys($scope.selected).length);
+		if (numChecked > 0) {
+			$('[data-wrapper="cataloglist"]').addClass('has-selected');
+			$('.selected-panel').toggleClass('showed', true);
+		} else {
+			$('[data-wrapper="cataloglist"]').removeClass('has-selected');
+			$('.selected-panel').toggleClass('showed', false);
+		}
+		$scope.selectedCount = numChecked;
+
+		/*if($scope.model.section.ID && $scope.model.section.ID == -1) */
+		$('.top-angular-tree #0radio:radio').prop('disabled', true);
+
+		$.each($scope.selected, function (k, v) {
+			$('.top-angular-tree #' + parseInt(k) + 'dir :radio').prop('disabled', true);
+		});
+	};
+
+	$scope.addDirSubmit = function (form) {
+
+		//console.log($scope.form.addDirForm.name);
+		if (!$scope.form.addDirForm.name) {
+			//console.log('validate error');
+		}
+		if (form.$valid) {
+			var parent_dir_id = 0;
+			if ($scope.model.section.ID) parent_dir_id = $scope.model.section.ID;
+			var name = $scope.form.addDirForm.name;
+			$scope.addDir(parent_dir_id, name, 'N');
+			$scope.modalWindowHide();
+		}
+	};
+
+
+	$scope.setInputDirty = function () {
+		$scope.addDirForm.dirName.$setViewValue($scope.addDirForm.dirName.$viewValue);
+	};
+
+	/**
+	 * Функция добавления папки
+	 */
+	$scope.addDirBtn = function () {
+		$scope.form.addDirForm.name = '';
+		// показываем форму
+		var content = angular.element('<p>Введите название папки</p>' +
+			'<form name="addDirForm" ng-submit="addDirSubmit(addDirForm)"><p>' +
+			'<input ng-model="form.addDirForm.name" ng-trim="true" ng-maxlength="50" class="dirName form-control" name="dirName" type="text" required />' +
+			'<br /><span class="error" ng-show="addDirForm.dirName.$error.required && addDirForm.dirName.$dirty">Введите название для новой папки</span>' +
+			'<span class="error" ng-show="addDirForm.dirName.$error.maxlength && addDirForm.dirName.$dirty">Название папки не должно превышать 50 символов</span>' +
+			'</p><button type="submit" ng-click="setInputDirty()" class="btn btn-primary add-confirm">Создать</button></form>');
+		$compile(content)($scope);
+		$scope.addMessage({
+			title: 'Создание папки',
+			content: content,
+			onSuccess: function () {
+			}
+		});
+	};
+
+	$scope.addDir = function (parent_dir_id, name, b_personality) {
+		$scope.query({
+				PARENT_DIR_ID: parent_dir_id,
+				ACTION: "ADD_DIR",
+				PERSONALITY: b_personality,
+				NAME: name
+			},
+			function (data) {
+				//console.log(data);
+				$scope.getArchiveCatalog(parent_dir_id, true);
+				$scope.getCatalogTree();
+			});
+	};
+
+	/**
+	 * Вывод типа документа в каталоге
+	 * @param doctype
+	 * @param IS_PERSONALITY
+	 * @returns {string}
+	 */
+	$scope.getTypeForList = function (doctype, IS_PERSONALITY) {
+		if (doctype == 'section') {
+			if (IS_PERSONALITY == 'Y') {
+				return 'Персоналия';
+			} else {
+				return 'Папка';
+			}
+		} else if (doctype == 'element') {
+			return 'Документ';
+		}
+	};
+
+	/**
+	 * Вывод описания элемента в каталоге
+	 * @param NAME
+	 * @param PERSONALITY_NAME
+	 * @returns {*}
+	 */
+	$scope.getDescForList = function (NAME, PERSONALITY_NAME) {
+		if (PERSONALITY_NAME && PERSONALITY_NAME != '') {
+			return PERSONALITY_NAME;
+		} else {
+			return NAME;
+		}
+	};
+
+	/**
+	 * Запрос к базе
+	 * @param params
+	 * @param onSuccess
+	 * @param onError
+	 */
+	$scope.query = function (params, onSuccess, onError) {
+		var preparedParams = {
+			entrypoint: params.ACTION,
+			parameters: params
+		};
+		$.ajax({
+			url: '/entrypoint/pds/',
+			headers: {
+				'X-Csrf-Token': $scope.token
+			},
+			dataType: "json",
+			method: 'POST',
+			data: JSON.stringify(preparedParams),
+			success: function (data) {
+				if (typeof onSuccess != 'undefined') {
+					$scope.$apply(onSuccess(data));
+				}
+			},
+			error: function (x, a, e) {
+				console.log("Error: " + e);
+			}
+		});
+	};
+
+	$scope.getUrl = function (elem) {
+		var url = '/personal_archive/';
+		var section = 'cat/';
+		switch (parseInt(elem.SECTION_TYPE)) {
+			case 1:
+				section = 'cat/';
+				$scope.sectionType = 1;
+				break;
+			case 2:
+				section = 'hero/';
+				$scope.sectionType = 2;
+				break;
+		}
+		// console.log('elem', elem, elem.SECTION_TYPE, section);
+		if (typeof elem.doctype != 'undefined') {
+			switch (parseInt(elem.ID)) {
+				case 1:
+					section = 'cat/';
+					$scope.sectionType = 1;
+					break;
+				case 2:
+					section = 'hero/';
+					$scope.sectionType = 2;
+					break;
+			}
+			switch (elem.doctype) {
+				case 'type':
+					url += section;
+					break;
+				case 'section':
+					url += section + elem.ID + '/';
+					break;
+				case 'element':
+					if (typeof elem.SECTION_ID != 'undefined' && typeof elem.ID != 'undefined') {
+						url += section + elem.SECTION_ID + '/' + elem.ID + '/';
+					} else {
+						url += section;
+					}
+					break;
+			}
+		} else {
+			if (typeof elem.SECTION_TYPE != 'undefined') {
+				url += section + elem.ID + '/';
+			} else {
+				if (typeof elem.SECTION_ID != 'undefined' && typeof elem.ID != 'undefined') {
+					url += section + elem.SECTION_ID + '/' + elem.ID + '/';
+				} else {
+					url += section;
+				}
+			}
+		}
+		return url;
+	};
+
+	$scope.getPublicDocUrl = function (element) {
+		var url = '';
+		if (element.INDEX_ID != 'no-index') {
+			switch (element.TYPE_ID) {
+				case 'operation':
+					url = '/ops/detail/' + element.CONTENT + '/';
+					break;
+				case 'zahoronenie':
+					url = '/memorial/burial/' + element.CONTENT;
+					break;
+				case 'operation-image':
+					url = element.CONTENT + '/';
+					return true;
+					break;
+				case 'magazine':
+				case 'dou':
+				case 'map':
+				case 'document':
+					url = '/documents/view/?id=' + element.CONTENT;
+					break;
+				case 'commander':
+					url = '/commander/' + element.CONTENT + '/';
+					break;
+				case 'hospital':
+					url = '/memorial/hospital/' + element.CONTENT;
+					break;
+				case 'army_unit':
+					url = '/warunit/' + element.NAME + '/';
+					break;
+				default:
+					url = '/heroes/' + element.INDEX_ID + '-' + element.TYPE_ID + element.CONTENT + '/';
+			}
+		} else {
+			switch (element.TYPE_ID) {
+				case 'image':
+					url = element.CONTENT;
+					//return true;
+					break;
+				case 'uploaded':
+					url = element.IMAGE;
+					//return true;
+					break;
+				default:
+					url = element.CONTENT;
+			}
+		}
+		return url;
+	};
+
+	/**
+	 * Запускаем при загрузке и при клике на элементы каталога(папки и документы)
+	 */
+	$scope.getArchiveCatalog = function (dirId, anywayGetCatalog, numDirs) {
+
+		if (this.node) {
+			this.e = this.node; // костыль для дерева директорий
+		}
+
+		var node = this.e;
+
+		if (node.doctype == 'type') {
+			// Переход с корневых разделов
+			if (parseInt(node.ID) == 1) {
+				window.location.href = '/personal_archive/cat/';
+			} else if (parseInt(node.ID) == 2) {
+				window.location.href = '/personal_archive/hero/';
+			}
+		} else if (node.doctype == 'section') {
+			if (parseInt(node.SECTION_TYPE) == 2) {
+				window.location.href = '/history/' + node.ID + '/?preview=true';
+			}
+		} else if (node.doctype == 'element') {
+			node.SECTION_TYPE = $('#' + node.SECTION_ID + 'dir').attr('data-section-type');
+			// $scope.sectionType = $('#' + this.e.SECTION_ID + 'dir').attr('data-section-type');
+			// console.log($('#' + this.e.SECTION_ID + 'dir').attr('data-section-type'));
+			// if (typeof dirId !== 'undefined') {
+			// 	window.location.href = '/personal_archive/cat/' + dirId + '/';
+			// 	return true;
+			// }
+			//
+			// if (this.node.doctype == 'element') {
+			// 	window.location.href = '/personal_archive/cat/' + this.node.SECTION_ID + '/' + this.node.ID + '/';
+			// } else if (this.node.PARENT_ID != 0) {
+			// 	window.location.href = '/personal_archive/cat/' + this.node.ID + '/';
+			// }
+			// console.log(url);
+			// return true;
+			window.location.href = $scope.getPublicDocUrl(node);
+		}
+		return true;
+		/*
+		 if(this.node){
+		 this.e = this.node;     // костыль для дерева директорий
+		 }
+
+		 if(typeof dirId !== 'undefined'){
+		 var sectionId = dirId;
+		 }else {
+		 if (this.e) { // проверка на клик по элементу каталога
+		 var sectionId = this.e.ID;
+		 if(sectionId == 0) $scope.model.mainSection = {};
+
+		 // если клик в режиме выделения элементов каталога, то обрабатываем чекбоксы
+		 // и запускаем функцию добавления в объект селектед
+		 var numSelected = parseInt(Object.keys($scope.selected).length);
+		 if(numSelected > 0){
+		 var check = $('#'+this.e.ID+this.e.doctype).find('input[type=checkbox]');
+		 if(check.is(':checked')){
+		 check.prop('checked', false);
+		 }else{
+		 check.prop('checked', true);
+		 }
+		 $scope.addToSelected(this.e);
+		 return true;
+		 }
+		 // завершили обработку в режиме выделения элементов
+		 } else {
+		 var sectionId = 0;
+		 }
+		 }
+
+		 if((this.e && this.e.PARENT_ID && this.e.PARENT_ID == 0 && this.e.doctype == 'section') || typeof dirId !== 'undefined') $scope.model.mainSection = this.e;
+
+
+		 // если сейчас находимся на этой странице
+		 //if(sectionId == $scope.model.section.ID && anywayGetCatalog != true) return true;
+		 var url = '';
+		 if(this.e) { // если был клик на элемент или папку
+		 if (this.e.doctype == 'element') { // создаем ссылку на документ
+		 $scope.model.element = this.e;
+		 } else {
+		 $scope.model.element = {};
+		 // запускаем, если нужно получить содержимое папки
+		 if(archiveSettings.template && archiveSettings.template == 'MAIN'){ //если главная страница
+		 var url = '/personal_archive/cat/'+this.e.ID+'/';
+		 window.location.href = url;
+		 }else {
+		 $scope.rebuildCatalogTree(sectionId);   // Перестраиваем дерево каталога личного архива
+		 $scope.copyCatalogForRight();
+		 $scope.getBreadcrumbs(sectionId);
+		 $scope.getCatalogList(sectionId);
+		 $scope.model.section = this.e;
+		 $scope.quicksearch = '';
+		 }
+		 }
+		 }else{ // запускаем, если в корне или зашли напрямую в папку
+		 if(archiveSettings.template && archiveSettings.template == 'MAIN' && dirId == -1){ //если главная страница
+		 var url = '/personal_archive/cat/-1/';
+		 window.location.href = url;
+		 }else {
+		 $scope.model.mainSection = {};
+		 $scope.rebuildCatalogTree(sectionId);   // Перестраиваем дерево каталога личного архива
+		 $scope.copyCatalogForRight();
+		 $scope.getBreadcrumbs(sectionId);
+		 $scope.getCatalogList(sectionId, numDirs);
+		 $scope.quicksearch = '';
+		 if (sectionId > 0) {
+		 $scope.model.section = {ID: sectionId};
+		 }else if(sectionId == -1){
+		 $scope.model.section = {NAME: 'Необработанные', ID: -1};
+		 $scope.model.element = {};
+		 } else {
+		 $scope.model.section = {NAME: 'Подборки'};
+		 }
+		 }
+		 }*/
+	};
+
+	/**
+	 * Функция получает количество несортированных документов
+	 */
+	$scope.getUnsortedNum = function () {
+		$scope.query({ACTION: 'GET_UNSORTED_NUM'}, function (data) {
+			// загружаем элементы заново, если количество элементов изменилось и мы находимся в Необработанных
+			/*if(parseInt($scope.unsortedNum) != parseInt(data.num)){
+			 if($scope.model.section.ID == -1) {
+			 $scope.getCatalogList(-1);
+			 }
+			 }*/
+			$scope.unsortedNum = data.num;
+		});
+	};
+
+	/**
+	 * Получаем список по id папки
+	 * @param sectionId
+	 */
+	$scope.getCatalogList = function (sectionId, numDirs) {
+		// $('.sidebar').preload();
+		$scope.query({ACTION: 'GET_CATALOG_LIST', DIR_ID: sectionId, LIMIT: numDirs}, function (data) {
+			//console.log(data);
+			$scope.model.list = data;
+			// $('.sidebar').preload('remove');
+			// сохраняем history браузера
+			if (sectionId > 0) {
+				//console.log('запускаем сохранение');
+				$scope.save_state(sectionId);
+			} else {
+				$scope.save_state();
+			}
+		});
+	};
+
+	$scope.getBreadcrumbs = function (sectionId) {
+
+		// if (sectionId == -1) {
+		// 	$scope.model.navigation = [{NAME: 'Необработанные', ID: -1}];
+		// 	return true;
+		// }
+
+		var catalogLink = {ID: 0, NAME: 'Подборки документов'};
+		if (sectionId == 0) {
+			$scope.model.navigation = [];
+			if (archiveSettings.template != 'MAIN') $scope.model.navigation.unshift(catalogLink);
+			//$scope.collapseCatalogTree(); // Сворачиваем весь каталог
+			return true;
+		}
+		$scope.query({ACTION: 'GET_BREADCRUMBS', DIR_ID: sectionId}, function (data) {
+			$scope.model.navigation = data;
+			$scope.model.navigation.unshift(catalogLink);
+			$scope.model.section = $scope.model.navigation[$scope.model.navigation.length - 1];
+			if ($scope.model.navigation[1]) $scope.model.mainSection = $scope.model.navigation[1];
+		});
+	};
+
+	// $scope.getCatalogTree = function () {
+	// 	$('.archive-block-column').preload();
+	// 	$scope.query({ACTION: 'GET_CATALOG_TREE'}, function (data) {
+	// 		$('.archive-block-column').preload('remove');
+	// 		// console.log(data);
+	// 		$scope.catalogTree = data;
+	// 		$scope.copyCatalogForRight();
+	// 		//$scope.copyCatalogForTop($scope.catalogTree);
+	// 		$scope.rebuildCatalogTree($scope.model.section.ID);
+	// 		//console.log('dfgdfgdfsgsdfgdfsg', $('#' + archiveDoc + 'dir span'));
+	// 		if (archiveDoc) {
+	// 			$timeout(function () {
+	// 				$('[id="' + archiveDoc + 'dir"] span').toggleClass('selected', true);
+	// 				var wrap = $('[id="0dir"] [data-node-children="SUBDIR"]:first').height();
+	// 				var posEl = $('[id="' + archiveDoc + 'dir"] span').offset().top - 120;
+	// 				var viewport = $('.archive-block-column-appendix').height();
+	// 				var editCount = parseInt(viewport) / 2 - 100;
+	// 				var newPosEl = posEl - editCount;
+	// 				//console.log(viewport, editCount, posEl, newPosEl);
+	// 				$('.archive-block-column-appendix').mCustomScrollbar("scrollTo", newPosEl, {scrollInertia: 600});
+	//
+	// 				//console.log($('[id="' + archiveDoc + 'dir"] span'));
+	// 			}, 200);
+	// 		}
+	// 	});
+	// };
+
+	$scope.getCatalogTree = function (sectionId, fromRoot = false, callback) {
+		$('.archive-block-column').preload();
+		if (sectionId == 0) fromRoot = true;
+		$scope.query(
+			{
+				ACTION: 'bookmarkSection/getCatalogTree',
+				// "bitrixId": 62,
+				"dirId": sectionId,
+				"lvl": 0,
+				"fromRoot": fromRoot,
+				"categoryTypes": {
+					1: {
+						"doctype": "type",
+						"NAME": "Подборки документов",
+						"ID": 1,
+						"SUBDIR": [],
+						"collapsed": false,
+						"collapseIcon": true
+					},
+					2: {
+						"doctype": "type",
+						"NAME": "Истории Героев",
+						"ID": 2,
+						"SUBDIR": [],
+						"collapsed": false,
+						"collapseIcon": true
+					}
+				},
+				"getElements": 0
+			}, function (data) {
+			//console.log('getCatalogTree data', data);
+			if (fromRoot) {
+				$scope.catalogTree = data.data;
+				//$scope.catalogTree = data;
+				//console.log('copyCatalogForRight 1');
+				$scope.copyCatalogForRight();
+				// $scope.copyCatalogForTop($scope.catalogTree);
+				if ($scope.model.section && $scope.model.section.ID) {
+					$scope.rebuildCatalogTree($scope.model.section.ID);
+				}
+			} else {
+				// дополняем дерево каталогами в нем
+				//console.log('getCatalogTree -> ', sectionId, data, $scope.catalogTree);
+				// $scope.catalogTree = data.data;
+
+				$scope.updateNodeInTree($scope.catalogTree, sectionId, data.data);
+
+				//console.log('getCatalogTree x', $scope.catalogTree);
+				//console.log('copyCatalogForRight 2');
+
+				$scope.copyCatalogForTop($scope.catalogTree);
+				$scope.rebuildCatalogTree(sectionId);
+				$scope.copyCatalogForRight();
+				//$('body').preload('remove');
+				//$('#'+ sectionId + 'dir').parent().closest("li").preload('remove');
+				$('#rightTreeBlock').preload('remove');
+				$('#topTreeBlock').preload('remove');
+				if (typeof callback === 'function') {
+					setTimeout(function () {
+						callback();
+					}, 300);
+				}
+			}
+			$('.archive-block-column').preload('remove');
+		});
+	};
+
+	$scope.updateNodeInTree = function (node, nodeId, newNode) {
+		// console.log('updateNodeInTree start', node, nodeId, newNode, typeof node);
+		if (typeof node !== 'object') return;
+		try {
+			if (typeof node === 'object' && ((nodeId in node) || ('ID' in node && node.ID === nodeId))) {
+				// console.log('updateNodeInTree +', node, newNode);
+				node.SUBDIR = newNode;
+				node.LOADED_SUBDIR = true;
+				node.collapsed = !node.collapsed;
+				// console.log(node, !node.collapsed);
+			} else {
+				if (typeof node === 'object' && 'SUBDIR' in node && node.SUBDIR != null) {
+					// console.log('updateNodeInTree -', node.SUBDIR);
+					Object.keys(node.SUBDIR).map(k => $scope.updateNodeInTree(node.SUBDIR[k], nodeId, newNode))
+				} else {
+					// root
+					Object.keys(node).map(e => $scope.updateNodeInTree(node[e], nodeId, newNode))
+				}
+			}
+		} catch (e) {
+			//console.log(e);
+			return;
+		}
+	};
+
+	$scope.$watch('model.mainSection', function () {
+		if ($scope.model.mainSection.ID) {
+			$scope.copyCatalogForRight();
+		}
+	});
+
+	$scope.copyCatalogForRight = function () {
+        $scope.catalogTreeRight = $scope.catalogTree;
+	};
+
+	$scope.copyCatalogForTop = function (data) {
+		var d = JSON.stringify(data);
+		var b = JSON.parse(d);
+		//$scope.catalogTreeTop = b;
+		$scope.catalogTreeTop = b/*[{ID: 0, NAME: 'Главная', SUBDIR: b, collapse: false, doctype: 'section'}]*/;
+	};
+
+	$scope.sidebarClose = function () {
+		RP.hideRightPanel();
+	};
+
+	$scope.sidebarOpen = function () {
+		RP.showRightPanel();
+	};
+
+		$scope.sidebarCloseOnLinkClick = function () {
+			if (window.innerWidth < 1200) {
+				RP.hideRightPanel();
+			}
+			window.location.href = '/personal_archive/'
+		};
+
+	// $scope.rebuildCatalogTree = function (sectionId, cList, arLink, level) {
+	// 	//if(sectionId == 0) return true; // выходим, если корневой каталог
+	// 	if (typeof arLink == 'undefined') arLink = {}; // путь
+	// 	if (typeof level == 'undefined') {
+	// 		level = 0;
+	// 	} else {
+	// 		level++;
+	// 	} // уровень вложенности
+	// 	if (typeof cList == 'undefined') {
+	// 		//console.log('ищем элемент:::::'+sectionId);
+	// 		cList = $scope.catalogTree;
+	// 		$scope.collapseCatalogTree();   // сворачиваем все дерево
+	// 	}
+	// 	$.each(cList, function (k, v) {
+	// 		//if(level == 0)
+	// 		if (this.ID == sectionId) {
+	// 			arLink[level] = k;
+	// 			// разворачиваем элементы
+	// 			//console.log(arLink);
+	// 			if (level == 0) $scope.unCollapseCatalogDirectory(arLink);
+	// 			//console.log('найден элемент:::::', this, level);
+	// 			// находим всех родителей и их разворачиваем тоже
+	// 			if (this.ID != 0) $scope.rebuildCatalogTree(this.PARENT_ID, undefined, arLink);
+	// 			return true;
+	// 		}
+	// 		if (this.SUBDIR && this.SUBDIR.length != 0) {
+	// 			$scope.rebuildCatalogTree(sectionId, this.SUBDIR, arLink, level);
+	// 		}
+	// 	});
+	// };
+
+	$scope.rebuildCatalogTree = function (sectionId, cList, arLink, level) {
+		//console.log('rebuild', sectionId, cList, arLink, level);
+		//if(sectionId == 0) return true; // выходим, если корневой каталог
+		if (typeof arLink == 'undefined') arLink = {}; // путь
+		if (typeof level == 'undefined') {
+			level = 0;
+		} else {
+			level++;
+		} // уровень вложенности
+		if (typeof cList == 'undefined' && typeof sectionId !== 'undefined' && sectionId !== 0 && sectionId !== null && sectionId !== '') {
+			//console.log('rebuild ищем элемент', sectionId, typeof sectionId);
+			cList = $scope.catalogTree;
+			$scope.collapseCatalogTree();   // сворачиваем все дерево
+		}
+		$.each(cList, function (k, v) {
+			//if(level == 0)
+			if (this.ID == sectionId) {
+				arLink[level] = this.ID;
+				// разворачиваем элементы
+				//console.log(arLink);
+				if (level == 0) {
+					$scope.unCollapseCatalogDirectory(arLink);
+				}
+				//console.log('найден элемент:::::', this, level);
+
+				if (this.doctype=='section') {
+					// находим всех родителей и их разворачиваем тоже
+					var parentId;
+					if (this.PARENT_ID != 0) {
+						parentId = this.PARENT_ID;
+					} else {
+						parentId = this.SECTION_TYPE;
+					}
+					$scope.rebuildCatalogTree(parentId, undefined, arLink);
+				}
+				if (this.doctype=='type') {
+					$scope.model.sectionType = this.ID;
+					$scope.rightScrollToEl();
+				} // подматываем меню
+				return true;
+			}
+			if (this.SUBDIR && this.SUBDIR.length != 0) {
+				$scope.rebuildCatalogTree(sectionId, this.SUBDIR, arLink, level);
+			}
+		});
+	};
+	$scope.rightScrollToEl = function () {
+		//console.log('select all');
+		if ($scope.model.elementID) {
+			//console.log('select element');
+			$timeout(function () {
+				$('[id="' + $scope.model.elementID + 'dir"] span').toggleClass('selected', true);
+				var wrap = $('[id="0dir"] [data-node-children="SUBDIR"]:first').height();
+				var posEl = $('[id="' + $scope.model.elementID + 'dir"] span').offset().top;
+				var viewport = $('.archive-block-column-appendix').height();
+				var editCount = parseInt(viewport) / 2 - 100;
+				var newPosEl = posEl - editCount;
+				//console.log(viewport, editCount, posEl, newPosEl);
+				$('.archive-block-column-appendix').mCustomScrollbar("scrollTo", newPosEl, {scrollInertia: 600});
+				$scope.model.elementID = false;
+				//console.log($('[id="' + archiveDoc + 'dir"] span'));
+			}, 200);
+
+		}
+	};
+
+	/**
+	 * Функция открывает каждый уровень по списку
+	 * @param ar
+	 */
+	$scope.unCollapseCatalogDirectory = function (ar) {
+		//console.log(ar);
+		// Object {0: 9, 1: 1, 2: 0}
+		// $scope.catalogTree[9].SUBDIR[1].SUBDIR[0]
+		var cat = $scope.catalogTree;
+		$.each(ar, function (k, v) {
+			if (v in cat) {
+				cat[v].collapsed = false;
+				cat = cat[v].SUBDIR;
+			}
+		});
+		// для дерева в перемещении
+		// $scope.copyCatalogForTop($scope.catalogTree);
+	};
+
+	$scope.collapseCatalogTree = function (c) {
+		// console.log('collapseCatalogTree');
+		if (typeof c == 'undefined') c = $scope.catalogTree;
+		if (typeof c == 'object' && c.length == 0) return true;
+		//console.log('collapseCatalogTree', c);
+		$.each(c, function (k, v) {
+			this.collapsed = true;
+			if (this.SUBDIR) $scope.collapseCatalogTree(this.SUBDIR);
+		});
+	};
+
+	/**
+	 * Выход с сайта
+	 */
+	$scope.logoutUser = function () {
+		// $scope.query({
+		// 	"ACTION": "LOGOUT"
+		// }, function (data) {
+		// 	window.location.href = '/';
+		// });
+		window.location.href = '/logout/';
+	};
+
+	/**
+	 * Авторизация пользователя
+	 */
+	$scope.loginUser = function () {
+		$scope.query({
+			"ACTION": "LOGIN",
+			"login": $scope.form.userLogin.login,
+			"password": $scope.form.userLogin.password
+		}, function (data) {
+			if (data.result == 'ERROR') {
+				$('.login-auth .error').html(data.message);
+				$('.login-auth .form-group').addClass('has-error');
+			} else {
+				window.location.href = '/personal_archive/';
+			}
+		});
+	};
+
+	/**
+	 * Регистрация пользователя
+	 */
+	$scope.registerUser = function () {
+		$scope.query({
+			"ACTION": "REGISTER",
+			"login": $scope.form.userRegister.login,
+			"email": $scope.form.userRegister.email,
+			"password": $scope.form.userRegister.password
+		}, function (data) {
+			if (data.result == 'ERROR') {
+				$('.login-auth .error').html(data.message);
+				$('.login-auth .form-group').addClass('has-error');
+			} else {
+				window.location.href = '/personal_archive/';
+			}
+		});
+	};
+
+	/**
+	 * Модальное окно авторизации
+	 */
+	$scope.loginForm = function () {
+		// Auth.authForm();
+		RP.hideRightPanel()
+		// Auth.authForm();
+		return true;
+		var content = angular.element('<form class="login-auth" name="userLogin">' +
+			'<div class="form-group">' +
+			'<label class="control-label" for="email">Электронная почта (email)</label>' +
+			'<input type="text" ng-model="form.userLogin.login" class="form-control" id="login" name="login" placeholder="Логин" required/>' +
+			'</div>' +
+			'<div class="form-group">' +
+			'<label class="control-label" for="pass">Пароль</label>' +
+			'<input type="password" ng-model="form.userLogin.password" class="form-control" name="password" id="pass" placeholder="Пароль" required/>' +
+			'</div>' +
+			'<span class="error"></span>' +
+			'<button class="btn btn-primary" ng-click="loginUser()">Войти</button>' +
+			'<p>' +
+			'<br/><a href="#">Забыли пароль?</a>' +
+			'</p>' +
+			'</form>');
+		$compile(content)($scope);
+		$scope.addMessage({
+			title: 'Личный архив',
+			content: content,
+			onSuccess: function () {
+				setTimeout(function () {
+					//$('.dirName').attr("auto-focus","");
+					//angular.element('.dirName').trigger('focus');
+				}, 0);
+			}
+		});
+	};
+
+	/**
+	 * Модальное окно регистрации
+	 */
+	$scope.registerForm = function () {
+		Auth.regForm();
+		return true;
+		// var content = angular.element('<form class="login-auth" name="userRegister">' +
+		// 	'<div class="form-group">' +
+		// 	'<label class="control-label" for="email">Логин</label>' +
+		// 	'<input type="text" ng-model="form.userRegister.login" class="form-control" name="login" id="login" placeholder="Логин" required/>' +
+		// 	'</div>' +
+		// 	'<div class="form-group">' +
+		// 	'<label class="control-label" for="email">Электронная почта (email)</label>' +
+		// 	'<input type="text" ng-model="form.userRegister.email" class="form-control" name="email" id="email" placeholder="Электронная почта (email)" required/>' +
+		// 	'</div>' +
+		// 	'<div class="form-group has-error">' +
+		// 	'<label class="control-label" for="pass">Пароль</label>' +
+		// 	'<input type="password" ng-model="form.userRegister.password" ng-minlength="6" ng-maxlength="30" class="form-control" name="password" id="pass" placeholder="Пароль" required/>' +
+		// 	'</div>' +
+		// 	'<span class="error"></span>' +
+		// 	'<button class="btn btn-primary" ng-click="registerUser()">Зарегистрироваться</button>' +
+		// 	'<div class="modal-desc">' +
+		// 	'Нажимая кнопку «Зарегистрироваться», вы принимаете <br/><a target="_blank" href="/agreement/">Правила и условия пользования</a>' +
+		// 	'</div>' +
+		// 	'</form>');
+		// $compile(content)($scope);
+		// $scope.addMessage({
+		// 	title: 'Личный архив',
+		// 	content: content,
+		// 	onSuccess: function () {
+		// 		setTimeout(function () {
+		// 			//$('.dirName').attr("auto-focus","");
+		// 			//angular.element('.dirName').trigger('focus');
+		// 		}, 0);
+		// 	}
+		// });
+	};
+
+
+
+
+	// переопределение функции раскрытия списка
+	$scope.archiveTree = {};
+	$scope.topArchiveTree = {};
+	$scope['archiveTree'].selectNodeHead = function (selectedNode) {
+		//console.log('Custom selectNodeHead', selectedNode);
+		if ('LOADED_SUBDIR' in selectedNode && selectedNode['LOADED_SUBDIR'] === false) {
+			//$('body').preload();
+			if ('PARENT_ID' in selectedNode) {
+				//$('#'+ selectedNode['PARENT_ID'] + 'dir').preload();
+				$('#rightTreeBlock').preload();
+			}
+
+			//console.log('LOADING... ', selectedNode['ID']);
+			selectedNode.LOADED_SUBDIR = !selectedNode.LOADED_SUBDIR;
+			$scope.getCatalogTree(selectedNode['ID'], false);
+		} else {
+			selectedNode.collapsed = !selectedNode.collapsed;
+		}
+	};
+	$scope['topArchiveTree'].selectNodeHead = function (selectedNode) {
+		// console.log('topArchiveTree.selectNodeHead', selectedNode);
+		if (('LOADED_SUBDIR' in selectedNode && selectedNode['LOADED_SUBDIR'] === false)
+			|| (!('LOADED_SUBDIR' in selectedNode) && selectedNode['SUBDIR'].length === 0)) {
+			if ('PARENT_ID' in selectedNode) {
+				$('#topTreeBlock').preload();
+			}
+			selectedNode.LOADED_SUBDIR = !selectedNode.LOADED_SUBDIR;
+			$scope.getCatalogTree(selectedNode['ID'], false, $scope.disableInnerSelected);
+		} else {
+			// console.log('topArchiveTree.selectNodeHead --->', ('LOADED_SUBDIR' in selectedNode && selectedNode['LOADED_SUBDIR'] === false),(!('LOADED_SUBDIR' in selectedNode) && selectedNode['SUBDIR'].length === 0));
+			selectedNode.collapsed = !selectedNode.collapsed;
+		}
+	};
+
+
+
+
+
+	// История
+
+	$scope.watch_back_button = function () {
+		$(window).on('popstate', function () {
+			var data = history.state;
+			//console.log('watch_back_button');
+			//console.log(data);
+			$scope.restore_state(data);
+		});
+	};
+
+	$scope.restore_state = function (state) {
+		if (!state) return false;
+		//console.log('restore_state');
+		var m = state.model;
+		if (m) $scope.set_model(m);
+	};
+
+	$scope.set_model = function (newModel) {
+		//console.log('set_model');
+		var modelCopy = $.extend(true, {}, newModel);
+		scope = angular.element(document.body).scope();
+		if (!scope) return false;
+		//console.log('применяем новый');
+		$scope.$apply(function () {
+			$scope.model = modelCopy;
+			return null;
+		});
+	};
+
+	$scope.get_model = function () {
+		scope = angular.element(document.body).scope();
+		if (!scope) return false;
+		var model = scope.model;
+		return $.extend(true, {}, model);
+	};
+
+	$scope.save_state = function (sectionId) {
+		if (typeof sectionId == 'undefined') sectionId = '';
+		//console.log(archiveSettings);
+		if (archiveSettings.template && archiveSettings.template == 'MAIN') return true;
+		//console.log('сохраняем состояние'/*, $scope.get_model()*/);
+		history.pushState({model: $scope.get_model()}, "personal_archive/cat/" + sectionId, "/personal_archive/cat/" + (sectionId == '' ? '' : sectionId + '/'));
+		//console.log(history.state);
+	};
+
+	$scope.findUrlProperty = function (name) {
+		var f = window.location.href.match(new RegExp(name + '=(\\w*)[#//]?', 'i'));
+		if (f && f.length > 1) return f[1];
+		return null;
+	};
+
+	$scope.findSectionIdInUrl = function () {
+		var h = window.location.href;
+		var l = h.length;
+		if (h[l - 1] == '/') h = h.substr(0, l - 1);
+		var f = h.split('/');
+		if (parseInt(f[(f.length - 1)]) > 0 || parseInt(f[(f.length - 1)]) < 0) return f[(f.length - 1)];
+		return undefined;
+	};
+
+
+	var archiveDir = $scope.findUrlProperty('archiveDir');
+	var archiveDoc = $scope.findUrlProperty('archiveDoc');
+	if (archiveDir != null) {
+		//console.log(archiveDir);
+		$scope.model.section.ID = archiveDir;
+		$scope.getBreadcrumbs(archiveDir);
+	}
+
+	if (archiveSettings.userAuth !== false) {
+		$scope.getCatalogTree(0);
+	}
+
+	// $scope.getUnsortedNum();
+	/*$interval(function(){
+	 $scope.getUnsortedNum(); // забираем количество Необработанных документов
+	 }, 10000);*/
+
+
+
+	/*
+	 // Загрузка страницы
+	 $scope.watch_back_button();
+	 // Признак авторизации
+	 if(archiveSettings.userAuth) $scope.userAuth = archiveSettings.userAuth;
+	 // проверяем наличие id папки в адресной строке.
+	 // если находим, то отдаем содержимое этой папки.
+	 // если нет, то отдаем корневые элементы
+	 var dirId = $scope.findSectionIdInUrl();
+	 if(archiveSettings.template == 'SEARCH'){
+	 // поиск элементов
+	 $scope.getArchiveCatalogSearchResult();
+	 }else {
+	 $scope.getArchiveCatalog(dirId, false, archiveSettings.numDirs);
+	 }
+	 $scope.getCatalogTree();
+	 $scope.getUnsortedNum(); // забираем количество Необработанных документов
+	 $interval(function(){
+	 $scope.getUnsortedNum(); // забираем количество Необработанных документов
+	 }, 7000);
+	 */
+
+});
+
+PNArchive.filter('unsafe', function ($sce) {
+	return $sce.trustAsHtml;
+});
+
+/*
+ PNArchive.directive('autoFocus', function ($timeout) {
+ return {
+ restrict: 'AC',
+ link: function (_scope, _element) {
+ $timeout(function () {
+ _element[0].focus();
+ }, 50);
+ }
+ };
+ });
+
+ PNArchive.directive('inputValidate', function () {
+ return {
+ require: 'ngModel',
+ link: function (scope, elm, attrs, ctrl) {
+ ctrl.$parsers.unshift(function (customValidate) {
+ if (/^\s*$/.test(customValidate)) {
+ console.log(elm.val());
+ elm.val('');
+ ctrl.$setValidity('customValidate', true);
+ return customValidate.toUpperCase();
+ } else {
+ ctrl.$setValidity('customValidate', false);
+ return undefined;
+ }
+ });
+ }
+ };
+ });
+ */

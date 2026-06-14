@@ -1,0 +1,189 @@
+/* Welcome to Compass. Use this file to define print styles.
+ * Import this file using the following HTML or equivalent:
+ * <link href="/stylesheets/print.css" media="print" rel="stylesheet" type="text/css" /> */
+
+ body {max-width: 1280px;}
+
+.progress_bar_block, 
+.header, 
+.slider_timeline, 
+.sidebar, 
+.scrolltop, 
+.footer, 
+.related-operations,
+.similar_documents {display: none !important;}
+ 
+.container {padding-left: 0px; padding-right: 0px;}
+
+/* 
+/heroes/podvig-chelovek_nagrazhdenie 
+/heroes/podvig-chelovek_donesenie  
+/heroes/podvig-chelovek_vpp 
+*/
+
+.heroes_person_card_face_circled img {visibility: visible;}
+.heroes_person_card_face_circled {border-radius: 0px;}
+.heroes_person_details_list {height: auto; width: 100%;}
+.heroes_person_details_list > dt {width: 100px; clear: left; float: left;}
+.heroes_person_details_list > dd {padding-left: 15px; float: left; width: 200px; clear: right;}
+.heroes_person_details_list:after {content: " "; display: block; position: relative; height: 1em; clear: both; margin-top: 1em;}
+
+
+.heroes_person_details_block {display: table; font-size: 7pt; width: 100%;}
+	.heroes_person_card_wrapper {display: table-cell; box-shadow: none; height: auto; width: 20%;}
+		.person_card_lastname {font-size: 12pt;}
+		.person_card_name {font-size: 10pt;}
+		.heroes_person_card_face .person_card_to_archive {display: none;}
+	.heroes_person_details_wrapper {display: table-cell; height: auto !important; padding-right: 0px;}
+		.show-full-link {display: none !important;}
+.heroes_person_details_block ~ .personal-wrappers + h2 {page-break-before: always;}
+
+.other_rewards_wrapper .other_rewards_item_wrapper {width: 100%;}
+.other_rewards_wrapper .other_rewards_item_wrapper .other_rewards_item_block > p > a {text-decoration: none;}
+.other_rewards_wrapper .other_rewards_item_wrapper .other_rewards_item_block > p > a:after {content:" (" attr(href) ")";}
+
+.heroes_file_tab_nav {margin-bottom: 1em !important;}
+.heroes_file_tab_nav *, .heroes_file_tab_nav > li {display: none;}
+.heroes_file_tab_nav > li.current {display: block; border: none; text-align: left; padding: 0;}
+.heroes_file_tab_nav > li.current a {display: inline-block; margin-right: 1ex;}
+.rewards_nav *, .rewards_nav > li {display: none;}	
+		.rewards_nav .rewards_nav_doc_view_select {display: block;}
+		.rewards_nav .selectricWrapper {display: block;}
+		.rewards_nav .selectric {display: block; border: none;}
+		.rewards_nav p {display: block;}
+
+.obraz {height: auto; padding-top: 0px !important;}
+.obraz .controls, .obraz .buttons {display: none !important;}
+.obraz .subdivision-order-wrapper {position: relative; top: 0px;}
+.obraz .subdivision-order-wrapper img {margin-left: 25px !important; margin-bottom: 10px;}
+.obraz .subdivision-order {float: none;}
+.obraz .subdivision-order td {font-size: 7pt; padding: 0; height: auto;}
+.obraz .subdivision-order tr:first-child {font-size: 7pt; padding: 0; font-weight: bold; height: auto;}
+.obraz .subdivision-order tr {height: auto;}
+
+.reward_details_docs {margin-bottom: 1em !important;}
+.reward_details_docs *, .reward_details_docs > li, .reward_details_docs > li:after {display: none;}
+.reward_details_docs .current {display: block; border: none; text-align: left;}
+.mapster_wrapper, .mapster_wrapper .mapster_el, .mapster_wrapper img[usemap] {width: 100% !important; height: initial !important;}
+.letter-image {overflow: visible !important; height: auto !important;}
+
+.burial.burial-general.path-list-wrap {padding-left: 0px !important; position: relative; height: 500px;}
+
+.burial.burial-general.path-list-wrap .structure-map.operation-inner.box_main-map {float: none; width: 100%; position: absolute; height: 100%; left: 0px; top: 0px;}
+.burial.burial-general.path-list-wrap .burial-info {display: none;}
+.structure-map .slider_map-zoom, .structure-map .selectricWrapper {display: none;}
+
+/* /commander */
+.general-info.cf {padding-right: 0px; page-break-after: always;}
+.gi__img {margin-bottom: 1em; float: left;}
+.gi__text {height: auto !important;}
+.gi__text-container {font-size: 8pt;}
+.read_full_biogr {display: none !important;}
+
+.units-wrap.js-units-container {display: block !important; position: relative !important;}
+.units-wrap.js-units-container ~ * {}
+.units-wrap.js-units-container { page-break-after: always; display: block;}
+	.js-units-wrap.units-wrap_slide {padding: 0px;}
+		.js-units-wrap.units-wrap_slide .bx-wrapper {margin: 0px !important; max-width: initial !important;}
+			.js-units-wrap.units-wrap_slide .bx-viewport {height: auto !important;}
+				.units-list.js-units-slider {width: 100% !important; -webkit-transform: none !important; padding-left: 0px; padding-right: 0px;}
+				.units-list.js-units-slider:after {display: block; content: " "; clear: both;}
+					.ul__slide {display: block; float: left !important; font-size: 9pt; width: 33% !important;}
+						.ul__slide__inner {padding: 0px 2em 1em 0px; font-size: 9pt; line-height: normal;}
+						.bx-clone, .bx-controls-direction {display: none;}
+
+
+
+
+.burial.burial-general.path-list-wrap {}
+.burial.burial-general.path-list-wrap:before  {display: table;}
+
+.burial.burial-general.path-list-wrap {}
+/*.units-wrap.js-units-container +  .burial.burial-general.path-list-wrap {
+	width: 200%;
+	-webkit-transform-origin: 0px 0px;
+	-webkit-transform: scale(.5);
+}
+*/
+.units-wrap.js-units-container .burial.burial-general.path-list-wrap .gmnoscreen {display: none;}
+.units-wrap.js-units-container .burial.burial-general.path-list-wrap .gm-style-cc {}
+.gmnoprint, .gmnoscreen {display: none !important;}
+.units-wrap.js-units-container +  .burial.burial-general.path-list-wrap {
+	height: 700px;
+}
+
+.war-diary.jbd {display: none;}
+
+/* ops */
+.universal_to_archive {display: none !important;}
+.head-wrap {margin-bottom: 1em; padding-bottom: 0;}
+
+.box-operation {padding-left: 0;}
+.box-operation	.box-operation-inner {float: none; width: 100%; margin-left: 0;}
+.box-operation	.box-operation-inner .result-operations {margin-top: 0;}
+.box-operation	.box-operation-inner .result-operations p {font-size: 7pt;}
+.box-operation	.box-operation-inner .scroll-bar-wrap.armed-forces-wrap-scroll {height: auto !important;}
+.box-operation	.box-operation-inner .scrollbar {display: none;}
+.box-operation	.box-operation-inner .viewport {overflow: visible !important; height: auto !important;}
+.box-operation	.box-operation-inner .overview {top: 0px !important; position: relative !important;}
+.box-operation	.box-operation-inner .overview .armed-forces-list {}
+.box-operation	.box-operation-inner .overview .armed-forces-list li {font-size: 7pt !important; padding-top: 0 !important; padding-bottom: 0 !important; margin: 1ex 0 !important;}
+.box-operation	.box-operation-inner .overview .armed-forces-list li a {font-size: 7pt;}
+.box-operation	.box-operation-inner .overview .armed-forces-list li .clickable {display: none !important;}
+.box-operation	.box-operation-inner .overview:after {display: block; content: " "; clear: both;}
+
+.box-operation	.stages-operation-form {page-break-before: always;}
+.box-operation	.stages-operation-form .stages-operation-arrow.next, .box-operation	.stages-operation-form .stages-operation-arrow.prev, .box-operation	.stages-operation-form > span {display: none;}
+
+.selectricWrapper.selectric-stages-operation-select
+
+.box-operation	.structure_main-events {}
+.box-operation	.structure_main-events .box_main-map {position: relative;}
+.box-operation	.structure_main-events .box_main-map > div {display: none;}
+.box-operation	.structure_main-events .box_main-map > div.map {display: block;}
+
+.content > .structure_main-events {}
+.content > .structure_main-events .box_preview-events {width: 100% !important;} 
+.content > .structure_main-events .box_preview-events + .box_main-map {display: none;}
+.burial.burial-general.operations {}
+.burial.burial-general.operations .burial-info {}
+.burial.burial-general.operations .burial-list-scroll.scroll-bar-wrap {/*width: 500px;*/}
+
+.burial.burial-general.operations .burial-list-scroll.scroll-bar-wrap .scrollbar {height: auto !important;}
+.burial.burial-general.operations .burial-list-scroll.scroll-bar-wrap .scrollbar .overview {top: 0px !important;}
+
+
+.stages-operation {display: none !important;}
+
+.reward-operation {page-break-before: always;}
+.reward-operation .reward-list {height: auto !important;}
+.reward-operation .reward-list .reward-list-item {width: 50%;}
+.reward-operation .reward-list + .reward-button-wrap {display: none;}
+
+.reward-operation + .war-diary, .reward-operation + .war-diary + .operation-dop-list {display: none;}
+/* /ops */
+
+/* jbd */
+.content {font-size: 7pt; line-height: 1;}
+.warlog-filter {text-align: left;}
+.warlog-filter form {font-size: 7pt;}
+.warlog-filter form:before {content: "Документ из результатов поиска по критериям:"; display: block;}
+.warlog-filter form > label {display: inline-block !important; height: auto; margin: 0 !important;}
+.warlog-filter form > label.label {display: none !important;}
+.warlog-filter form > label > .label-title {display: inline !important; font-size: 7pt;}
+.warlog-filter form > label input[type="text"] {width: auto; border: none; padding: 0 !important; display: inline !important; font-weight: bold; font-size: 7pt; line-height: 1; height: auto;}
+.warlog-filter form > input[type="submit"], .warlog-filter form > input[type="submit"] + a {display: none;}
+.warlog-filter form > label > .input_with_icon i {display: none;} 
+
+.warlog-filter form > .selectric {}
+.warlog-filter form > .selectric-dou-doc-type {display: inline; padding: 0; height: auto; min-height: auto; top: 0;}
+.warlog-filter form > .selectric-dou-doc-type:before {display: inline; content: "Тип документа: ";}
+.warlog-filter form > .selectric-dou-doc-type * {display: none;}
+.warlog-filter form > .selectric-dou-doc-type .selectric {display: inline !important; border: none;}
+.warlog-filter form > .selectric-dou-doc-type .selectric .label {display: inline; font-size: 7pt;}
+
+.warlog .warlog-side, .warlog .warlog-dou-side {display: none;}
+.warlog .warlog-main .letter-image #dragdiv img {height: auto !important; width: 100% !important;}
+
+.letter-image {page-break-inside: avoid;}
+/* /jbd */

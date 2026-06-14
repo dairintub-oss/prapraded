@@ -1,0 +1,53 @@
+/**
+ * GUI
+ * @param elementId
+ * @param map
+ */
+function mapZoom( elementId, map ){
+    this.container = $('#'+elementId)
+    this.current = 5;
+    this.min = 5;
+    this.max = 14;
+    this.map = map;
+    var _self = this;
+    var _e = $('div.level:not(.button)>div.square', this.container);
+    _e.on('click', function(){
+        var zoom = parseInt($(this).parent().attr('zoom-data'));
+        _self.map.setZoom( zoom );
+        _self.zoomTo(zoom);
+        _self.current = zoom;
+    });
+    this.plusBtn = $('div.minus>div.square', this.container);
+    this.plusBtn.on('click', function(){
+        _self.prev();
+    });
+    this.minusBtn = $('div.plus>div.square', this.container);
+    this.minusBtn.on('click', function(){
+        _self.next();
+    });
+};
+mapZoom.prototype.next = function(){
+    if (this.current<this.max){
+        ++this.current;
+        this.zoomTo(this.current);
+        this.map.setZoom(this.current);
+    }
+};
+mapZoom.prototype.prev = function(){
+    if (this.current>this.min){
+        --this.current;
+        this.zoomTo(this.current);
+        this.map.setZoom(this.current);
+    }
+};
+mapZoom.prototype.onClick = function(){
+};
+mapZoom.prototype.zoomTo = function(index){
+    $('div.level',this.container).removeClass('active');
+    $('div.level>div.label').addClass('hide');
+
+    $('div.level[zoom-data='+index+']').addClass('active');
+    $('div.level[zoom-data='+index+']>div.label').removeClass('hide');
+
+    this.current = index;
+}

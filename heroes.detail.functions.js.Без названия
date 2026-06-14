@@ -1,0 +1,1790 @@
+var pageNagradyViewed = false;
+var pageDoneseniyaViewed = false;
+var isMapInited = false;
+
+var heroPathMapUI = null;
+/** @type {HeroesDocumentView} */
+var documentViewer = null;
+var cardDocumentViewer = null;
+
+/**
+ * @returns {HeroesDocumentView}
+ */
+function getDocumentViewer () {
+	if (!documentViewer) {
+		documentViewer = newDocumentViewer();
+	}
+	return documentViewer;
+}
+
+function newDocumentViewer () {
+	return new window.HeroesDocumentView();
+}
+
+function getCardDocumentViewer () {
+	if (!cardDocumentViewer) {
+		cardDocumentViewer = newCardDocumentViewer();
+	}
+	return cardDocumentViewer;
+}
+
+function newCardDocumentViewer () {
+	return new window.DocumentViewer();
+}
+
+$(document).ready(function () {
+
+	if ($('.js-units-container').is(':visible')) {
+		unitsSlider();
+	}
+
+	// Получаем массив фотографий
+	photosPath = $('.json-data__doc').data('json-photo');
+// console.log(photosPath);
+
+	if (photosPath != undefined && photosPath != '') {
+		var photoMain = ''; // Основное фото
+		var photoSlide = ''; // Слайдеры
+		if (photosPath.length > 0) {
+			for (k in photosPath) {
+				if (photosPath[k]['img_file'].indexOf('http') === -1) {
+					img_link = getUrlImage(0, photosPath[k]['img_file'], photosPath[k]['index']);
+				} else {
+					img_link = photosPath[k]['img_file'];
+				}
+				var photoActive = '';
+				if (k == 0) {
+					photoActive = 'active';
+				}
+				photoMain += '<a href="' + img_link + '" class="hero-card-person-photo__item fancybox ' + photoActive + ' js-hero-person-card-photo" rel="hero-card-photo"  style="background-image: url(' + img_link + ');"></a>';
+				if (photosPath.length > 1) {
+					photoSlide += '<div class="swiper-slide"><div class="hero-card-person-slider-photo ' + photoActive + ' js-hero-person-card-slider-photo" data-slider-photo-index="' + k + '">' +
+						'<div class="hero-card-person-slider-photo__img" style="background-image: url(' + img_link + ')"></div></div></div>';
+				}
+			}
+			//$('.js-hero-person-card-photo').getUrlImageError();
+			$('.hero-card-person-photo').html(photoMain);
+			$('.hero-card-person-slider .swiper-wrapper').html(photoSlide);
+		}
+	}
+
+	var $el = $(".js-hero-person-card-photos");
+
+	if ($el.length) {
+		var $photos = $el.find('.js-hero-person-card-photo'),
+			$slider_photos = $el.find('.js-hero-person-card-slider-photo');
+
+		var swiper = new Swiper('.js-hero-person-card-photos-slider', {
+			freeMode: true,
+			freeModeSticky: true,
+			slidesPerView: 4,
+			slideToClickedSlide: true,
+			mousewheel: true,
+			scrollbar: {
+				el: '.js-hero-person-card-photos-slider .swiper-scrollbar',
+			},
+		});
+
+		$slider_photos.on('click', function (e) {
+			var $this = $(this);
+
+			$slider_photos.removeClass("active");
+			$this.addClass('active');
+
+			$photos.removeClass("active");
+			$photos.eq($this.data('slider-photo-index')).addClass('active');
+		})
+	}
+
+	$('#divCanvasContainer').preload();
+	// показываем ссылку Показать всю информацию
+
+	var face = parseInt($('.heroes_person_card_face').height()) + 96;
+	if (parseInt($('.heroes_person_details_list').height()) > (parseInt(face) + 20)) {
+		$('.show-full-link').css({display: 'inline-block'});
+		$('.heroes_person_details_wrapper').css({height: parseInt(face) - 32});
+	}
+
+	var tabChangingStatus = false;
+
+	$('.heroes_card__tabs li').click(function (event) {
+
+		if (!tabChangingStatus) {
+			tabChangingStatus = true;
+		} else {
+			event.preventDefault();
+			event.stopPropagation();
+			return false;
+		}
+
+		//console.log('tab click', $(this).attr('data-doc-id'), $(this).attr('rel'), tabChangingStatus);
+		$('.heroes_card__tabs li').removeClass('active');
+		$(this).addClass('active');
+		const idE = $(this).attr('rel'),
+			$slider = $('.js-hero-person-card-photos-slider');
+
+		$('.personal-wrappers .personal-wrapper').css({display: 'none'});
+		$('.personal-wrappers .' + idE + '-wrapper').css({display: 'block'});
+
+		if (idE == 'path') {
+			$('.heroes_card__box-path').hide();
+			$('.heroes_card__box-map').show();
+			$('.heroes_card__box-info').hide();
+			$('.heroes_card__docs-info-doc').hide();
+			$('.heroes_card__docs-info-path').show();
+			$('.heroes_card__docs-info').show();
+			// $('.hero-card-action-dop').hide();
+		} else if (idE == 'addInfo') {
+			$('.heroes_card__box-path').show();
+			$('.heroes_card__box-map').hide();
+			$('.heroes_card__box-info').show();
+			$('.heroes_card__docs-info').hide();
+			// $('.hero-card-action-dop').show();
+		} else {
+			$('.heroes_card__box-path').show();
+			$('.heroes_card__box-map').hide();
+			$('.heroes_card__box-info').hide();
+			$('.heroes_card__docs-info-doc').show();
+			$('.heroes_card__docs-info-path').hide();
+			$('.heroes_card__docs-info').show();
+			// $('.hero-card-action-dop').hide();
+			if (idE == 'information') {
+				unitsSlider();
+				// $(window).trigger('resize');
+			}
+		}
+
+		if (idE == 'information' || idE == 'donesenie') {
+			$('.hero-card-similar-docs').show();
+		} else {
+			$('.hero-card-similar-docs').hide();
+		}
+
+		// Удаляем активность с документов
+		if (idE != 'donesenie') {
+			removeDocActive();
+			$('.js-hero-card-panel-scroll').mCustomScrollbar("scrollTo", "top");
+			docInfo.clickDoc = 'N';
+		}
+
+		if (idE == 'donesenie') {
+			docInfo.availability = 'N';
+
+			if (docInfo.id, docInfo.type, docInfo.index/*, docInfo.documents_pages*/) {
+				docInfo.availability = 'Y';
+			}
+
+			if (docInfo.isDocClick == false && docInfo.mainId && !$('.js-hero-card-doc[data-doc-id="' + docInfo.mainId + '"][data-doc-type="' + docInfo.mainType + '"][data-doc-index="' + docInfo.mainIndex + '"]').hasClass("active")) {
+				// console.log('logger', 1);
+				$('.js-hero-card-doc[data-doc-id="' + docInfo.mainId + '"][data-doc-type="' + docInfo.mainType + '"][data-doc-index="' + docInfo.mainIndex + '"]').addClass('active')
+					.find('.heroes_card__doc-box').addClass('active');
+
+				if (!heroesPathUI.scrollBar.hasClass("mCS_destroyed")) {
+					setTimeout(function () {
+						//heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc .active'));
+						if ($('.js-hero-card-doc .active')[0].offsetHeight >= $('.hero-card-panel__inner')[0].offsetHeight) {
+							heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc .active'));
+						} else {
+							var topScroll = ($('.hero-card-panel-head')[0].offsetHeight + ($('.heroes_card__docs-info')[0].offsetHeight + 40) + ($('.js-hero-card-doc .active').closest('.hero-card-docs-item-wrap_year')[0].offsetTop + $('.js-hero-card-doc .active')[0].offsetTop)) - (($('.hero-card-panel__inner')[0].offsetHeight - $('.js-hero-card-doc .active')[0].offsetHeight) / 2);
+							heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", topScroll); // 350
+						}
+					}, 300);
+				}
+			}
+
+			if (docInfo.isDocClick) {
+				// console.log('logger', 2);
+				if (docInfo.clickDoc == 'N') {
+					console.log('logger', 3);
+					if ($('.js-hero-card-doc').length > 0) {
+						History.replaceState(null, document.title, '/heroes/' + $('.js-hero-card-doc:first').data('doc-index') + '-' + $('.js-hero-card-doc:first').data('doc-type') + $('.js-hero-card-doc:first').data('doc-id') + '/' + window.location.search);
+					}
+					docInfo.id = $('.js-hero-card-doc:first').data("doc-id");
+					docInfo.type = $('.js-hero-card-doc:first').data("doc-type");
+					docInfo.index = $('.js-hero-card-doc:first').data("doc-index");
+					indexdb = $('.js-hero-card-doc:first').data("doc-index");
+					docInfo.showDoc = $('.js-hero-card-doc:first').data("doc-show");
+					podvig1 = $('.js-hero-card-doc:first').data("podvig_1");
+					docInfo.podvig_1 = $('.js-hero-card-doc:first').data("podvig_1");
+					podvig2 = $('.js-hero-card-doc:first').data("podvig_2");
+					docInfo.podvig_2 = $('.js-hero-card-doc:first').data("podvig_2");
+					podvig3 = $('.js-hero-card-doc:first').data("podvig_3");
+					docInfo.podvig_3 = $('.js-hero-card-doc:first').data("podvig_3");
+					docInfo.nomer_fonda = $('.js-hero-card-doc:first').data("nomer_fonda");
+					docInfo.nomer_opisi = $('.js-hero-card-doc:first').data("nomer_opisi");
+					docInfo.nomer_dela = $('.js-hero-card-doc:first').data("nomer_dela");
+					docInfo.shkaf_i_yaschik = $('.js-hero-card-doc:first').data("shkaf_i_yaschik");
+					docInfo.shkaf_number = $('.js-hero-card-doc:first').data("shkaf_number");
+					docInfo.box_number = $('.js-hero-card-doc:first').data("box_number");
+					docInfo.storage_number = $('.js-hero-card-doc:first').data("storage_number");
+					docInfo.section = $('.js-hero-card-doc:first').data("section");
+
+					var docDocumentsIdArr = [];
+
+					if (typeof $('.js-hero-card-doc:first').data("doc-documents-id") === 'number') {
+						docDocumentsIdArr.push(parseInt($('.js-hero-card-doc:first').data("doc-documents-id")));
+					} else {
+						var docDocumentsId = $('.js-hero-card-doc:first').data("doc-documents-id");
+						docDocumentsId = docDocumentsId ? docDocumentsId.split(',') : [];
+
+						for (var id in docDocumentsId) {
+							if (docDocumentsId[id] != '') {
+								docDocumentsIdArr.push(parseInt(docDocumentsId[id]));
+							}
+						}
+					}
+
+					var docPagesIdArr = [];
+
+					if (typeof $('.js-hero-card-doc:first').data("doc-pages-id") === 'number') {
+						docPagesIdArr.push(parseInt($('.js-hero-card-doc:first').data("doc-pages-id")));
+					} else {
+						var docPagesId = $('.js-hero-card-doc:first').data("doc-pages-id");
+						docPagesId = docPagesId ? docPagesId.split(',') : [];
+
+						for (var id in docPagesId) {
+							if (docPagesId[id] != '') {
+								docPagesIdArr.push(parseInt(docPagesId[id]));
+							}
+						}
+					}
+
+
+					let docPagesArr = [];
+
+					if (typeof $('.js-hero-card-doc:first').data("doc-pages") === 'string') {
+						docPagesArr = JSON.parse($('.js-hero-card-doc:first').data("doc-pages"));
+					} else {
+						var docPages = $('.js-hero-card-doc:first').data("doc-pages");
+						docPagesArr = docPages;
+					}
+					// console.log('docDocumentsIdArr', docDocumentsIdArr);
+
+					if (docDocumentsIdArr.length > 0 || docPagesIdArr.length > 0) {
+						docInfo.documents_pages = {
+							documents_id: docDocumentsIdArr,
+							pages_id: docPagesIdArr,
+							pages: docPagesArr
+						}
+					} else {
+						docInfo.documents_pages = null;
+					}
+
+					$('.js-hero-card-doc:first').addClass('active').find('.heroes_card__doc-box').addClass('active');
+
+					if (!heroesPathUI.scrollBar.hasClass("mCS_destroyed") && $('.js-hero-card-doc:first')[0]) {
+						setTimeout(function () {
+							//heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc:first'));
+							if ($('.js-hero-card-doc:first')[0].offsetHeight >= $('.hero-card-panel__inner')[0].offsetHeight) {
+								heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc:first'));
+							} else {
+								var topScroll = ($('.hero-card-panel-head')[0].offsetHeight + ($('.heroes_card__docs-info')[0].offsetHeight + 40) + ($('.js-hero-card-doc:first').closest('.hero-card-docs-item-wrap_year')[0].offsetTop + $('.js-hero-card-doc:first')[0].offsetTop)) - (($('.hero-card-panel__inner')[0].offsetHeight - $('.js-hero-card-doc:first')[0].offsetHeight) / 2);
+								heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", topScroll); // 350
+							}
+						}, 300);
+					}
+				}
+			} else {
+				// console.log('logger', 4);
+				docInfo.isDocClick = true;
+				$('.js-hero-card-doc:first').addClass('active').find('.heroes_card__doc-box').click();
+			}
+
+			if (docInfo.index == 'podvig') {
+				// console.log('logger', 5);
+				//console.log('logger', docInfo, podvig1, podvig2, podvig3);
+				if (podvig1 || docInfo.podvig_1) {
+					$('#podvig1').show();
+				} else {
+					$('#podvig1').hide();
+				}
+				if (podvig2 || docInfo.podvig_2) {
+					$('#podvig2').show();
+				} else {
+					$('#podvig2').hide();
+				}
+				if (podvig3 || docInfo.podvig_3) {
+					$('#podvig3').show();
+				} else {
+					$('#podvig3').hide();
+				}
+			}
+
+
+			if (docInfo.similarDoc) {
+				removeDocActive();
+				docInfo.similarDoc = false;
+			} else if (docInfo.showDoc === 'Y') {
+
+				if (docInfo.index !== 'kld') {
+					documentViewer = getDocumentViewer();
+					documentViewer.loadPerson(docInfo.index, docInfo.type, parseInt(docInfo.id));
+					documentViewer.init(docInfo.documents_pages && docInfo.documents_pages.pages ? docInfo.documents_pages.pages : []);
+				} else {
+					cardDocumentViewer = getCardDocumentViewer();
+					cardDocumentViewer.loadPerson(docInfo.index, docInfo.type, parseInt(docInfo.id));
+					cardDocumentViewer.init([]);
+				}
+
+				// $.fn.heroesViewer('getAllLinkedDocs', docInfo.id, docInfo.type, docInfo.index, docInfo.documents_pages, function (_this, index) {
+				// 	imageViewerControlsLayout();
+				// });
+
+				if (docInfo.index == 'memorial') {
+					$('#divCanvasContainer').show();
+					$('.reward_details_docs').hide();
+				} else if (docInfo.index == 'podvig') {
+					if (window.appModeInternet &&
+						in_array(docInfo.type, [
+							'chelovek_kartoteka',
+							'chelovek_in_kartoteka',
+							'chelovek_in_kartoteka_inostranec'
+							])
+					) {
+						setSecrecy();
+					} else {
+						$('#divCanvasContainer').show();
+						$('.reward_details_docs').show();
+					}
+				} else {
+					$('#divCanvasContainer').show();
+					$('.reward_details_docs').hide();
+				}
+
+				if (docInfo.secrecy == 'Y' || docInfo.availability == 'N') {
+					setSecrecy();
+				} else {
+					$('#js-heroes__doc-secrecy').hide();
+				}
+			} else {
+				// console.log('logger', 8);
+				setSecrecy();
+			}
+
+			//загружаем главную картинку
+			if (pageDoneseniyaViewed == false) {
+				// console.log('logger', 9);
+				//getImagePage(parseInt(position) + 1, parentId);
+				// $.fn.heroesViewer('getDonesenie');
+				pageDoneseniyaViewed = true;
+			}
+
+
+		} else if (idE == 'nagrady') {
+			if (pageNagradyViewed == false) {
+				$.fn.heroesViewer('getStrokaForAward');
+				pageNagradyViewed = true;
+			}
+		} else if (idE == 'path') {
+
+			if (!isMapInited) {
+
+				$(".burial-general").preload();
+				$(".js-events-container").preload();
+				var pathData = JSON.parse($('#pn-path-default').text());
+
+				if (docInfo && !docInfo.isCommander) {
+					// загрузка боевого пути героя
+					heroPathMapUI = new heroPathMapInit({domId: 'map-content'});
+					heroPathMapUI.load('heroPathMapUI', function () {
+						if (pathData) {
+							initMapUI = pathData => {
+								heroPathMapUI._data = pathData;
+								setTimeout(function () {
+									heroPathMapUI.init({rPlace: rPlace, bPlace: bPlace});
+									isMapInited = true;
+								}, 100);
+							};
+							if (pathData.mestaSluzhby) {
+								let mestaSluzhbyIds = pathData.mestaSluzhby.map(value => value.id)
+									.filter(value => (value + '').search(/6000/) !== -1);
+								warunitParts = WarunitsCommonService.getWarunitTimelineParts(mestaSluzhbyIds);
+								warunitParts.then(value => {
+									value = value.map(item => {
+										item.dateFrom = pathData.mestaSluzhby[0].dateFrom;
+										item.dateTo = pathData.mestaSluzhby[0].dateTo;
+										return item;
+									});
+									pathData.mestaSluzhby = pathData.mestaSluzhby.concat(value);
+									initMapUI(pathData);
+								}, error => {
+									initMapUI(pathData);
+								});
+							} else {
+								initMapUI(pathData);
+							}
+						}
+					});
+
+				} else {
+
+					var recs = $('.hero-card__document_list__json').data('career-records');
+					var c = 0;
+					for (var r in recs) {
+						if (c == 0) {
+							pathData.career = recs[r];
+						}
+						c++;
+					}
+
+					//загрузка боевого пути командующего
+					window.commanderPathUI = new commanderPathInit({domId: 'map-content'});
+					commanderPathUI.load('commanderPathUI', function () {
+						commanderPathUI._data = pathData;
+						setTimeout(function () {
+							commanderPathUI.init();
+							isMapInited = true;
+						}, 100);
+					});
+				}
+
+			}
+
+		} else if (idE == 'addInfo') {
+			var docsIdsForComments = [docInfo.id];
+			if (docInfo.chelovekId) docsIdsForComments.push(docInfo.chelovekId);
+			var userComment = new UserComment($('.comments-list'));
+
+			if (documentIds) {
+				userComment.getListByDocumentListId(documentIds);
+			} else {
+				userComment.getListByDocumentId(docsIdsForComments, docInfo.type, docInfo.index);
+			}
+		}
+
+		if (idE == 'information') {
+			if ($slider.hasClass('swiper-container-initialized')) {
+				swiper.update();
+				swiper.updateSize();
+			}
+		}
+
+		setTimeout(function () {
+			tabChangingStatus = false;
+		}, 500);
+	});
+
+
+	/**
+	 * Функционал показа биографии полностью
+	 */
+	$('.hero-card__bio__item').collapser({
+		mode: 'words',
+		speed: 'slow',
+		truncate: 100,
+		ellipsis: ' ... ',
+		controlBtn: '',
+		showText: 'Показать полностью',
+		hideText: 'Свернуть',
+		showClass: 'show-class',
+		hideClass: 'hide-class',
+
+		atStart: 'hide',
+		blockTarget: 'next',
+		blockEffect: 'fade',
+
+		lockHide: false,
+		changeText: false,
+		beforeShow: null,
+		afterShow: null,
+		beforeHide: null,
+		afterHide: null
+	});
+
+
+	/**
+	 * Функционал показа истории полностью
+	 */
+	$('[data-role="heroes-doc-history-text"]').collapser({
+		mode: 'words',
+		speed: 'slow',
+		truncate: 15,
+		ellipsis: ' ... ',
+		controlBtn: '',
+		showText: 'Показать полностью',
+		hideText: 'Свернуть',
+		showClass: 'show-class',
+		hideClass: 'hide-class',
+
+		atStart: 'hide',
+		blockTarget: 'next',
+		blockEffect: 'fade',
+
+		lockHide: false,
+		changeText: false,
+
+		beforeShow: function (item) {
+			if (!window.modalElement) {
+				let $m = $('<div></div>');
+				$m
+					.toggleClass('modal-history', true)
+					.html(item.e.data('collHTML'));
+				window.modalElement = $m;
+				window.modalElement.addClass('modal-wide');
+			}
+			item.hide();
+			window.modalElement.modal();
+
+		},
+		afterShow: function (item) {
+			item.hide();
+		},
+
+		beforeHide: null,
+		afterHide: null
+	});
+
+
+	$('.hero-card__document_list__wrapper').one('inview', function (event, isInView) {
+		if (isInView) {
+			var recs = $('.hero-card__document_list__json').data('career-records');
+			var careerRecords = [];
+			var c = 0;
+			for (var r in recs) {
+				if (c == 0) {
+					careerRecords = recs[r];
+				}
+				c++;
+			}
+			var lastName = $('.hero-card__document_list__json').data('last-name');
+			var careerRecordsUnits =
+				careerRecords
+					.map(function (item) {
+						return item.division;
+					})
+					.filter(function (v, i, a) {
+						return a.indexOf(v) === i;
+					});
+			// console.log(careerRecords, careerRecordsUnits, lastName);
+
+			var documents = new commanderDocuments();
+
+			/**
+			 * Поиск и отображение ЖБД для командующего
+			 */
+			documents.getDocumentsJBD(
+				$('#jbd-list'),
+				careerRecords[0]['date_from'],
+				careerRecords[careerRecords.length - 1]['date_to'],
+				careerRecordsUnits
+			);
+
+			/**
+			 * Поиск и отображение ДОУ для командующего
+			 */
+			careerRecordsUnits.forEach(function (item, i, arr) {
+				documents.getDocumentsDOU($('#oy'), lastName, item);
+			});
+		}
+	});
+
+	$('[data-role=getAddInfo]').click(function (e) {
+		e.preventDefault();
+		$('body,html').animate({scrollTop: 0}, 200);
+		$('[rel="addInfo"]').click();
+	});
+
+});
+
+
+function openDonesenie() {
+	docInfo.availability = 'N';
+
+	if (docInfo.id, docInfo.type, docInfo.index/*, docInfo.documents_pages*/) {
+		docInfo.availability = 'Y';
+	}
+
+	if (docInfo.isDocClick == false && docInfo.mainId && !$('.js-hero-card-doc[data-doc-id="' + docInfo.mainId + '"][data-doc-type="' + docInfo.mainType + '"][data-doc-index="' + docInfo.mainIndex + '"]').hasClass("active")) {
+		// console.log('logger', 1);
+		$('.js-hero-card-doc[data-doc-id="' + docInfo.mainId + '"][data-doc-type="' + docInfo.mainType + '"][data-doc-index="' + docInfo.mainIndex + '"]').addClass('active')
+			.find('.heroes_card__doc-box').addClass('active');
+
+		if (!heroesPathUI.scrollBar.hasClass("mCS_destroyed")) {
+			setTimeout(function () {
+				//heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc .active'));
+				if ($('.js-hero-card-doc .active')[0].offsetHeight >= $('.hero-card-panel__inner')[0].offsetHeight) {
+					heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc .active'));
+				} else {
+					var topScroll = ($('.hero-card-panel-head')[0].offsetHeight + ($('.heroes_card__docs-info')[0].offsetHeight + 40) + ($('.js-hero-card-doc .active').closest('.hero-card-docs-item-wrap_year')[0].offsetTop + $('.js-hero-card-doc .active')[0].offsetTop)) - (($('.hero-card-panel__inner')[0].offsetHeight - $('.js-hero-card-doc .active')[0].offsetHeight) / 2);
+					heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", topScroll); // 350
+				}
+			}, 300);
+		}
+	}
+
+	if (docInfo.isDocClick) {
+		// console.log('logger', 2);
+		if (docInfo.clickDoc == 'N') {
+			// console.log('logger', 3);
+
+			History.replaceState(null, document.title, '/heroes/' + $('.js-hero-card-doc:first').data('doc-index') + '-' + $('.js-hero-card-doc:first').data('doc-type') + $('.js-hero-card-doc:first').data('doc-id') + '/' + window.location.search);
+
+			docInfo.id = $('.js-hero-card-doc:first').data("doc-id");
+			docInfo.type = $('.js-hero-card-doc:first').data("doc-type");
+			docInfo.index = $('.js-hero-card-doc:first').data("doc-index");
+			indexdb = $('.js-hero-card-doc:first').data("doc-index");
+			docInfo.showDoc = $('.js-hero-card-doc:first').data("doc-show");
+			podvig1 = $('.js-hero-card-doc:first').data("podvig_1");
+			docInfo.podvig_1 = $('.js-hero-card-doc:first').data("podvig_1");
+			podvig2 = $('.js-hero-card-doc:first').data("podvig_2");
+			docInfo.podvig_2 = $('.js-hero-card-doc:first').data("podvig_2");
+			podvig3 = $('.js-hero-card-doc:first').data("podvig_3");
+			docInfo.podvig_3 = $('.js-hero-card-doc:first').data("podvig_3");
+			docInfo.nomer_fonda = $('.js-hero-card-doc:first').data("nomer_fonda");
+			docInfo.nomer_opisi = $('.js-hero-card-doc:first').data("nomer_opisi");
+			docInfo.nomer_dela = $('.js-hero-card-doc:first').data("nomer_dela");
+			docInfo.shkaf_i_yaschik = $('.js-hero-card-doc:first').data("shkaf_i_yaschik");
+			docInfo.shkaf_number = $('.js-hero-card-doc:first').data("shkaf_number");
+			docInfo.box_number = $('.js-hero-card-doc:first').data("box_number");
+			docInfo.storage_number = $('.js-hero-card-doc:first').data("storage_number");
+			docInfo.section = $('.js-hero-card-doc:first').data("section");
+
+			var docDocumentsIdArr = [];
+
+			if (typeof $('.js-hero-card-doc:first').data("doc-documents-id") === 'number') {
+				docDocumentsIdArr.push(parseInt($('.js-hero-card-doc:first').data("doc-documents-id")));
+			} else {
+				var docDocumentsId = $('.js-hero-card-doc:first').data("doc-documents-id").split(',');
+
+				for (var id in docDocumentsId) {
+					if (docDocumentsId[id] != '') {
+						docDocumentsIdArr.push(parseInt(docDocumentsId[id]));
+					}
+				}
+			}
+
+
+			var docPagesIdArr = [];
+
+			if (typeof $('.js-hero-card-doc:first').data("doc-pages-id") === 'number') {
+				docPagesIdArr.push(parseInt($('.js-hero-card-doc:first').data("doc-pages-id")));
+			} else {
+				var docPagesId = $('.js-hero-card-doc:first').data("doc-pages-id").split(',');
+
+				for (var id in docPagesId) {
+					if (docPagesId[id] != '') {
+						docPagesIdArr.push(parseInt(docPagesId[id]));
+					}
+				}
+			}
+
+			var docPagesArr = [];
+
+			if (typeof $('.js-hero-card-doc:first').data("doc-pages") === 'string') {
+				docPagesArr = JSON.parse($('.js-hero-card-doc:first').data("doc-pages"));
+			} else {
+				var docPages = $('.js-hero-card-doc:first').data("doc-pages");
+				docPagesArr = JSON.parse(docPages);
+			}
+
+			// console.log('docDocumentsIdArr', docDocumentsIdArr);
+
+			if (docDocumentsIdArr.length > 0 || docPagesIdArr.length > 0) {
+				docInfo.documents_pages = {
+					documents_id: docDocumentsIdArr,
+					pages_id: docPagesIdArr,
+					pages: docPagesArr
+				}
+			} else {
+				docInfo.documents_pages = null;
+			}
+
+			$('.js-hero-card-doc:first').addClass('active').find('.heroes_card__doc-box').addClass('active');
+
+			if (!heroesPathUI.scrollBar.hasClass("mCS_destroyed")) {
+				setTimeout(function () {
+					//heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc:first'));
+					if ($('.js-hero-card-doc:first')[0].offsetHeight >= $('.hero-card-panel__inner')[0].offsetHeight) {
+						heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", $('.js-hero-card-doc:first'));
+					} else {
+						var topScroll = ($('.hero-card-panel-head')[0].offsetHeight + ($('.heroes_card__docs-info')[0].offsetHeight + 40) + ($('.js-hero-card-doc:first').closest('.hero-card-docs-item-wrap_year')[0].offsetTop + $('.js-hero-card-doc:first')[0].offsetTop)) - (($('.hero-card-panel__inner')[0].offsetHeight - $('.js-hero-card-doc:first')[0].offsetHeight) / 2);
+						heroesPathUI.scrollBar.mCustomScrollbar("scrollTo", topScroll); // 350
+					}
+				}, 300);
+			}
+		}
+	} else {
+		// console.log('logger', 4);
+		docInfo.isDocClick = true;
+		$('.js-hero-card-doc:first').addClass('active').find('.heroes_card__doc-box').click();
+	}
+
+	if (docInfo.index == 'podvig') {
+		// console.log('logger', 5);
+		if (podvig1 || docInfo.podvig_1) {
+			$('#podvig1').show();
+		} else {
+			$('#podvig1').hide();
+		}
+		if (podvig2 || docInfo.podvig_2) {
+			$('#podvig2').show();
+		} else {
+			$('#podvig2').hide();
+		}
+		if (podvig3 || docInfo.podvig_3) {
+			$('#podvig3').show();
+		} else {
+			$('#podvig3').hide();
+		}
+	}
+
+	// console.log(docInfo.showDoc);
+
+	// docInfo.id = $('.js-hero-card-doc.active').data("doc-id");
+	// docInfo.type = $('.js-hero-card-doc.active').data("doc-type");
+	// docInfo.index = $('.js-hero-card-doc.active').data("doc-index");
+	// docInfo.showDoc = $('.js-hero-card-doc.active').data("doc-show");
+	// docInfo.documents_pages.documents_id = $('.js-hero-card-doc.active').data("doc-documents-id").split(',');
+	// docInfo.documents_pages.pages_id = $('.js-hero-card-doc.active').data("doc-pages-id").split(',');
+	//
+	// console.log(docInfo.showDoc, docInfo.id, docInfo.type, docInfo.index, docInfo.documents_pages);
+
+
+	if (docInfo.similarDoc) {
+		// console.log('logger', 6);
+		removeDocActive();
+		docInfo.similarDoc = false;
+	} else if (docInfo.showDoc == 'Y') {
+		// console.log('logger', 7, docInfo.id, docInfo.type, docInfo.index, docInfo.documents_pages);
+		documentViewer = getDocumentViewer();
+		documentViewer.loadPerson(docInfo.index, docInfo.type, parseInt(docInfo.id));
+		documentViewer.init(docInfo.documents_pages && docInfo.documents_pages.pages ? docInfo.documents_pages.pages : []);
+		// $.fn.heroesViewer('getAllLinkedDocs', docInfo.id, docInfo.type, docInfo.index, docInfo.documents_pages, function (_this, index) {
+		// 	imageViewerControlsLayout();
+		// });
+
+		if (docInfo.index == 'memorial') {
+			$('#divCanvasContainer').show();
+			$('.reward_details_docs').hide();
+		} else if (docInfo.index == 'podvig') {
+			if (in_array(docInfo.type, ['chelovek_kartoteka', 'chelovek_in_kartoteka', 'chelovek_in_kartoteka_inostranec'])) {
+				setSecrecy();
+			} else {
+				$('#divCanvasContainer').show();
+				$('.reward_details_docs').show();
+			}
+		} else {
+			$('#divCanvasContainer').show();
+			$('.reward_details_docs').hide();
+		}
+// console.log(111, docInfo.secrecy, docInfo.availability, docInfo, $(this).data('doc-secrecy'));
+		if (docInfo.secrecy == 'Y' || docInfo.availability == 'N') {
+			setSecrecy();
+		} else {
+			$('#js-heroes__doc-secrecy').hide();
+		}
+	} else {
+		// console.log('logger', 8);
+		setSecrecy();
+	}
+
+	//загружаем главную картинку
+	if (pageDoneseniyaViewed == false) {
+		// console.log('logger', 9);
+		//getImagePage(parseInt(position) + 1, parentId);
+		// $.fn.heroesViewer('getDonesenie');
+		pageDoneseniyaViewed = true;
+	}
+
+}
+
+function removeDocActive() {
+	$('.js-hero-card-doc').removeClass('active');
+	$('.heroes_card__doc-box').removeClass('active');
+}
+
+function setSecrecy() {
+	$('.js__hero-card-doc-not-pub__desc').html('');
+
+	if ($.inArray(docInfo.type, ['person_doroga', 'person_guk', 'person_rvk']) >= 0) {
+		$('.js__hero-card-doc-not-pub__title').html('Источник информации:');
+		if (docInfo.type == 'person_doroga') {
+			$sourceInfo = 'Галерея Дорога памяти';
+			$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item"><a href="https://foto.pamyat-naroda.ru/detail/' + docInfo.id + '">Запись в галерее Дорога памяти</a></span>');
+		} else if (docInfo.type == 'person_guk') {
+			$sourceInfo = 'ЦА МО РФ';
+		} else if (docInfo.type == 'person_rvk') {
+			$sourceInfo = docInfo.section;
+		}
+		$('.js__hero-card-doc-not-pub__section').html($sourceInfo);
+	} else if (docInfo.section && docInfo.section !== "Картотека политработников") {
+		if (docInfo.showDoc === 'Y' && window.appModeInternet === false) {
+			this.getCardDocumentViewer().showNoPages();
+		}
+		$('.js__hero-card-doc-not-pub__title').html('Документ находится в:');
+		$('.js__hero-card-doc-not-pub__section').html(docInfo.section);
+	} else {
+		$('.js__hero-card-doc-not-pub__title').html('Документ находится в:');
+		$('.js__hero-card-doc-not-pub__section').html('ЦАМО');
+	}
+	if (docInfo.nomer_fonda) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Фонд: ' + docInfo.nomer_fonda + '</span>');
+	}
+	if (docInfo.nomer_opisi) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Опись: ' + docInfo.nomer_opisi + '</span>');
+	}
+	if (docInfo.nomer_dela) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Дело: ' + docInfo.nomer_dela + '</span>');
+	}
+	if (docInfo.shkaf_i_yaschik) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">' + docInfo.shkaf_i_yaschik + '</span>');
+	}
+	if (docInfo.shkaf_number) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Шкаф: ' + docInfo.shkaf_number + '</span>');
+	}
+	if (docInfo.box_number) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Ящик: ' + docInfo.box_number + '</span>');
+	}
+	if (docInfo.storage_number) {
+		$('.js__hero-card-doc-not-pub__desc').append('<span class="hero-card-doc-not-pub__desc__item">Дело: ' + docInfo.storage_number + '</span>');
+	}
+
+	if (docInfo.showDoc === 'N') {
+		$('#divCanvasContainer').hide();
+		$('#js-heroes__doc-secrecy').show();
+		$('#js-heroes__doc-kartoteka').hide();
+		$('.reward_details_docs').hide();
+	} else {
+		$('#divCanvasContainer').show();
+		$('#js-heroes__doc-secrecy').hide();
+		$('#js-heroes__doc-kartoteka').show();
+		$('.reward_details_docs').hide();
+	}
+}
+
+
+function showFullPersonalInfo() {
+	var fullHeight = $('.heroes_person_details_list').height(),
+		smallHeight = $('.heroes_person_card_face').height() + 64,
+		$container = $('.heroes_person_details_wrapper'),
+		$link = $('.show-full-link'),
+		expandedClass = "details_expanded";
+
+	if ($container.hasClass(expandedClass)) {
+		$container.css({height: smallHeight}).removeClass('details_expanded');
+		$link.html($link.data("closed-text"));
+	} else {
+		$container.css({height: fullHeight}).addClass('details_expanded');
+		$link.html($link.data("opened-text"));
+	}
+}
+
+
+//-------------------------------донесения--------------------------------------
+$(document).ready(function () {
+
+	$('.js-copy-link').click(function () {
+		var copyText = window.location.protocol + '//' + document.location.host + $(this).attr('data-link');
+		var textarea = document.createElement("textarea");
+		textarea.textContent = copyText;
+		// textarea.style.position = "fixed";
+		$(this).append(textarea);
+		if (navigator.userAgent.match(/ipad|iphone/i)) {
+			var range;
+			var selection;
+			range = document.createRange();
+			range.selectNodeContents(textarea);
+			selection = window.getSelection();
+			selection.removeAllRanges();
+			selection.addRange(range);
+			textarea.setSelectionRange(0, 999999);
+		} else {
+			textarea.select();
+		}
+
+		try {
+			document.execCommand("copy");
+		} catch (ex) {
+			console.warn("Copy to clipboard failed.", ex);
+			return false;
+		} finally {
+			$(this).find(textarea).remove();
+		}
+	});
+});
+
+function getImagePage(num, parent) {
+	if (num <= total && num > 0) {
+		//$('.obraz-loader').css({display:'block'});
+		$('#divCanvasContainer').preload();
+		//$.fn.heroesViewer('getDocByPositionAndParent', num, parent, indexdb, type);
+		// console.log('logger', 17, 'getAllDocByNum', parent, indexdb, num);
+		$.fn.heroesViewer('getAllDocByNum', parent, indexdb, num);
+		$('.page-selector').prop('value', num).selectric('refresh');
+		return true;
+	} else {
+		return false;
+	}
+}
+
+
+// Значение параметра в URL
+$.urlParam = function (name) {
+	var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+	if (results == null) return "";
+	else return results[1];
+};
+
+
+//----------------------------награды-----------------------------
+
+$(document).ready(function () {
+
+	$('.js-imageviewer-controls-center-current').on('click', function () {
+		var $this = $(this),
+			$nav = $this.closest('.js-imageviewer-controls-center');
+
+		if ($this.hasClass("active")) {
+			$this.removeClass("active");
+			$nav.removeClass("active");
+		} else {
+			$this.addClass("active");
+			$nav.addClass("active");
+		}
+	});
+
+	$('.reward_details_docs li').click(function () {
+		$('.reward_details_docs li').removeClass('current');
+		$(this).addClass('current');
+		$(this).closest(".js-imageviewer-controls-center")
+			.removeClass("active")
+			.find('.js-imageviewer-controls-center-current')
+			.removeClass("active")
+			.html($(this)
+				.find('.js-imageviewer-controls-center-item').html());
+
+		var mId = $(this).prop('id');
+
+		$('#image').prop('src', '');
+		$('#divCanvasContainer').preload();
+		if (mId == 'first_page') {
+			$('.controls').css({display: 'block'});
+			// $.fn.heroesViewer('getFirstPageForAward');
+		} else if (mId == 'stroka') {
+			$('.controls').css({display: 'block'});
+			// $('#divCanvasContainer').preload();
+			// $.fn.heroesViewer('getStrokaForAward');
+		} else if (mId == 'nagradnoy_list') {
+			$('.controls').css({display: 'block'});
+			// $.fn.heroesViewer('getNagradnoyListPageForAward');
+		} else if (mId == 'podvig1') {
+			var i = {};
+			i.id_page = id;
+			i.img_link = getUrlImage(id, podvig1, 'podvig-cut');
+			// initImageFromData(i);
+			$.fn.heroesViewer('showCurHeroImage', i);
+			// showImageFromData();
+			$('.person_card_to_archive').data('doc-url', i.img_link);
+			$('.controls').css({display: 'none'});
+		} else if (mId == 'podvig2') {
+			var i = {};
+			i.id_page = id;
+			i.img_link = getUrlImage(id, podvig2, 'podvig-cut');
+			$.fn.heroesViewer('showCurHeroImage', i);
+			showImageFromData();
+			$('.person_card_to_archive').data('doc-url', i.img_link);
+			$('.controls').css({display: 'none'});
+		} else if (mId == 'podvig3') {
+			var i = {};
+			i.id_page = id;
+			i.img_link = getUrlImage(id, podvig3, 'podvig-cut');
+			// initImageFromData(i);
+			$.fn.heroesViewer('showCurHeroImage', i);
+			showImageFromData();
+			$('.person_card_to_archive').data('doc-url', i.img_link);
+			$('.controls').css({display: 'none'});
+		}
+
+	});
+
+});
+
+
+// ------------------------------GLOBAL QUERY SET-------------------------
+
+$(document).ready(function () {
+	var q = '';
+	if (docInfo.last_name && docInfo.last_name != '') q += docInfo.last_name + ' ';
+	if (docInfo.first_name && docInfo.first_name != '') q += docInfo.first_name + ' ';
+	if (docInfo.middle_name && docInfo.middle_name != '') q += docInfo.middle_name + ' ';
+	if (docInfo.date_birth && docInfo.date_birth != '') q += docInfo.date_birth + ' ';
+	if (docInfo.year_birth && docInfo.year_birth != '') q += docInfo.year_birth + ' ';
+	$('#q').val(q);
+});
+
+
+// ------------------------------SIMILAR DOCS-----------------------------
+
+var numIterationsSimilar = 0;       // количество итераций вывода похожих доков
+var similarParams = {};
+$(document).ready(function () {
+
+	similarParams = {};
+	if (docInfo.hero_last_name && docInfo.hero_last_name != '') similarParams.last_name = docInfo.hero_last_name;
+	if (docInfo.hero_first_name && docInfo.hero_first_name != '') similarParams.first_name = docInfo.hero_first_name;
+	if (docInfo.hero_middle_name && docInfo.hero_middle_name != '') similarParams.middle_name = docInfo.hero_middle_name;
+	//if (docInfo.rank && docInfo.rank != '') similarParams.rank = docInfo.rank;
+	if (docInfo.hero_date_birth && docInfo.hero_date_birth != '') similarParams.date_birth = docInfo.hero_date_birth;
+	if (docInfo.hero_year_birth && docInfo.hero_year_birth != '') similarParams.year_birth = docInfo.hero_year_birth;
+	if (docInfo.birthplace && docInfo.birthplace != '' && docInfo.birthplace != null) similarParams.birthplace = docInfo.birthplace;
+
+	// показываем список похожих документов
+	// $('.container').preload();
+	// setTimeout(function () {
+	// 	$.fn.heroesViewer('getSimilarDocsByParams', similarParams, (parseInt(numIterationsSimilar) * 8));
+	// }, 5000);
+	if (window.SIMILAR_DOCS.enabled) {
+		$('.similar_documents').one('inview', function (event, isInView) {
+			if (isInView) {
+				setTimeout(function () {
+					if (window.SIMILAR_DOCS.static) {
+						$.fn.heroesViewer('getSimilarDocsByParams', similarParams, (parseInt(numIterationsSimilar) * 8));
+					} else {
+						$.fn.heroesViewer('getSimilarDocsByParamsDynamic', similarParams, (parseInt(numIterationsSimilar) * 8));
+					}
+				}, 300);
+			} else {
+				// element has gone out of viewport
+			}
+		});
+	} else {
+		$('.js-hero-card-similar-docs-wrapper-desktop').hide();
+	}
+
+	$.fn.hasAttr = function (name) {
+		return this.attr(name) !== undefined;
+	};
+
+});
+
+
+function arLinkedDocs() {
+	this.docs = [];
+
+	this.set = function (name, val) {
+		var v = val.split(',');
+		if (v.length != 3) {
+			$.error('Argument missed!');
+			return false;
+		}
+		var r = {};
+		r.index = v[0];
+		r.type = v[1];
+		r.id = v[2];
+		r.name = name;
+		this.docs.push(r);
+	};
+
+	this.get = function () {
+		return this.docs;
+	};
+}
+
+
+// ----------------------------- ADDITIONAL -------------------------------//
+
+// название сущности для центровки
+var placeForCenter = null;
+
+$(document).ready(function () {
+
+	//-------------------------------- кнопка показать на карте -------------------------------------
+
+	var pathLink = $(document).find('[data-link-action="showWarPath"]');
+	$(pathLink).on('click', function (e) {
+		$('.heroes_card__tabs li[rel="path"]').trigger('click');
+
+		setTimeout(function () {
+			e.preventDefault();
+			placeForCenter = $(this).attr('data-link-place');
+			if ($('[rel="path"]').offset()) {
+				var destination = $('[rel="path"]').offset().top;
+			} else {
+				var destination = $('#map').offset().top;
+			}
+			$("html,body").animate({scrollTop: destination - 20}, 450, function () {
+				$('[rel="path"]').click();
+				if (mpv.current != -1) {
+					mpv.pathList[mpv.current].setCenter();
+				}
+			});
+		});
+
+	});
+
+
+	var getPreparedField = function (field) {
+		var replacement = ['.', ',', '/', '|', '\\', '_', '-', '\'', '"', '+', '(', ')', '[', ']', '*', '?', '!', ':', ';', '<', '>', '=', '^', '{', '}', '~', '%', '$', '#', '№', '@'];
+		var field = strReplace(replacement, ' ', field);
+		field = field.replace(/\s{2,}/g, " ");
+		return field;
+	};
+
+	try {
+
+
+//-------------------------------- Определение места призыва -----------------------------------
+//	console.log('rPlace', rPlace, rPlaceFull);
+
+		async function getRPlace(docsRelated) {
+			let requestResult = {};
+
+			// проверяем в справочнике мест рождений
+			function tryPlaceFull(rPlaceFull) {
+				return getDbData({
+					url: getEsProtocol() + getEsUrl() + '/ind/pamyat/voenkomat/_search',
+					method: 'post',
+					data: JSON.stringify({
+						query: {
+							query_string: {
+								query: getPreparedField(
+									rPlaceFull.replace('неизвестный', '')
+								),
+								default_operator: "AND"
+							}
+						},
+						size: 1
+					}),
+					dataType: 'json',
+					error: function (x, s, t) {
+					},
+					success: function (data) {
+						if (data.hits.total > 0 && data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null) {
+							$('.rPlace').css({display: 'inline-block'});
+							rPlaceObject = {results: [], status: 'OK'};
+							rPlaceObject.results.push({
+								geometry: {
+									location: {
+										lat: data.hits.hits[0]._source.shirota,
+										lng: data.hits.hits[0]._source.dolgota
+									}
+								}
+							});
+							return rPlaceObject;
+						} else {
+							return {};
+						}
+					}
+				});
+			}
+
+			requestResult = await tryPlaceFull(rPlaceFull);
+
+			//console.log('requestResult', requestResult);
+			if ('hits' in requestResult && requestResult.hits.total === 0) {
+				// если не нашли на первом этапе, то пытаемся по всем связанным документам определить место
+				for (const el of docsRelated) {
+
+					//console.log('el', el);
+
+					function requestPromise(el) {
+						return getDbData({
+							url: getEsProtocol() + getEsUrl() + '/ind/pamyat/callplace/_search?q=entity_id:' + el.id + '+AND+entity_index:' + el.index + (('type' in el) ? '+AND+entity_type:' + el.type : ''),
+							method: 'get',
+							dataType: 'json',
+							error: function (x, s, t) {
+							},
+							success: function (data) {
+								if (data.hits.total > 0 && data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null) {
+									$('.rPlace').css({display: 'inline-block'});
+									rPlaceObject = {results: [], status: 'OK'};
+									rPlaceObject.results.push({
+										geometry: {
+											location: {
+												lat: data.hits.hits[0]._source.shirota,
+												lng: data.hits.hits[0]._source.dolgota
+											}
+										}
+									});
+								} else if (data.hits.total > 0 && data.hits.hits[0]._source.coords_center && data.hits.hits[0]._source.coords_center != null) {
+									$('.rPlace').css({display: 'inline-block'});
+									var coordsCenter = data.hits.hits[0]._source.coords_center.split(';');
+									rPlaceObject = {results: [], status: 'OK'};
+									rPlaceObject.results.push({
+										geometry: {
+											location: {
+												lat: parseFloat(coordsCenter[0].replace(',', '.')),
+												lng: parseFloat(coordsCenter[1].replace(',', '.'))
+											}
+										}
+									});
+									//console.log('callplace', rPlaceObject);
+								} else {
+									// var rPlaceR = rPlace.replace('Ленинград', 'Санкт-Петербург');
+									// rPlaceR = rPlaceR.replace('Ленинград', 'Санкт-Петербург');
+									// // console.log('callplace yandex');
+									// $.ajax({
+									// 	url: 'https://geocode-maps.yandex.ru/1.x/',
+									// 	method: 'get',
+									// 	data: {"geocode": rPlaceR, "apikey": getYandexMapKey(), "format": "json"},
+									// 	dataType: 'json',
+									// 	error: function (x, s, t) {
+									// 	},
+									// 	success: function (data) {
+									// 		rPlaceObject = {results: [], status: 'OK'};
+									// 		if (data.response && data.response.GeoObjectCollection.featureMember.length > 0) {
+									// 			var coordinates = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos.split(' ');
+									// 			var lat = parseFloat(coordinates[1]);
+									// 			var lng = parseFloat(coordinates[0]);
+									// 			rPlaceObject.results.push({
+									// 				formatted_address: data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.text,
+									// 				geometry: {
+									// 					location: {
+									// 						lat: lat,
+									// 						lng: lng
+									// 					}
+									// 				}
+									// 			});
+									// 			$('.rPlace').css({display: 'inline-block'});
+									// 		}
+									//
+									// 	}
+									// });
+								}
+							}
+						});
+					}
+
+					requestResult = await requestPromise(el);
+					//console.log('requestResult:', el, requestResult);
+					if ('hits' in requestResult && requestResult.hits.total > 0) {
+						break;
+					}
+				}
+			}
+
+			return requestResult;
+		}
+
+		getRPlace(docsRelated);
+
+//-------------------------------- Определение места рождения -----------------------------------
+//console.log('bPlace', bPlace);
+
+		async function getBPlace(docsRelated) {
+			let requestResult = {};
+			// проверяем в справочнике мест рождений
+			//console.log('docsRelated', docsRelated, typeof docsRelated);
+			for (const el of docsRelated) {
+				function requestPromise(el) {
+					return getDbData({
+						url: getEsProtocol() + getEsUrl() + '/ind/pamyat/birthplace/_search?q=entity_id:' + +el.id + '+AND+entity_index:' + el.index + (('type' in el) ? '+AND+entity_type:' + el.type : ''),
+						method: 'get',
+						dataType: 'json',
+						error: function (x, s, t) {
+						},
+						success: function (data) {
+							if (data.hits.total > 0 && data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null) {
+								$('.bPlace').css({display: 'inline-block'});
+								bPlaceObject = {results: [], status: 'OK'};
+								bPlaceObject.results.push({
+									geometry: {
+										location: {
+											lat: data.hits.hits[0]._source.location.lon, //TODO тут координаты реверсивны
+											lng: data.hits.hits[0]._source.location.lat
+										}
+									}
+								});
+							} else if (data.hits.total > 0 && data.hits.hits[0]._source.coords_center && data.hits.hits[0]._source.coords_center != null) {
+								$('.bPlace').css({display: 'inline-block'});
+								var coordsCenter = data.hits.hits[0]._source.coords_center.split(';');
+								bPlaceObject = {results: [], status: 'OK'};
+								bPlaceObject.results.push({
+									geometry: {
+										location: {
+											lat: parseFloat(coordsCenter[0].replace(',', '.')),
+											lng: parseFloat(coordsCenter[1].replace(',', '.'))
+										}
+									}
+								});
+								// console.log('birthplace', bPlaceObject);
+							} else {
+
+								// var bPlaceR = bPlace.replace('Ленинград', 'Санкт-Петербург');
+								// bPlaceR = bPlaceR.replace('Ленинград', 'Санкт-Петербург');
+								//
+								// // 2) тащим геодекодинг яндекса, если ничего не нашли
+								// // console.log('birthplace yandex');
+								// //Try to find
+								// $.ajax({
+								// 	url: 'https://geocode-maps.yandex.ru/1.x/',
+								// 	method: 'get',
+								// 	data: {"geocode": bPlaceR, "apikey": getYandexMapKey(), "format": "json"},
+								// 	dataType: 'json',
+								// 	error: function (x, s, t) {
+								// 	},
+								// 	success: function (data) {
+								// 		bPlaceObject = {results: [], status: 'OK'};
+								// 		if (data.response && data.response.GeoObjectCollection.featureMember.length > 0) {
+								// 			var coordinates = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos.split(' ');
+								// 			var lat = parseFloat(coordinates[1]);
+								// 			var lng = parseFloat(coordinates[0]);
+								// 			bPlaceObject.results.push({
+								// 				formatted_address: data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.text,
+								// 				geometry: {
+								// 					location: {
+								// 						lat: lat,
+								// 						lng: lng
+								// 					}
+								// 				}
+								// 			});
+								// 			$('.bPlace').css({display: 'inline-block'});
+								// 		}
+								//
+								// 	}
+								// });
+							}
+						}
+					});
+				}
+
+				requestResult = await requestPromise(el);
+				//console.log('requestResult:', el, requestResult);
+				if ('hits' in requestResult && requestResult.hits.total > 0) {
+					break;
+				}
+			}
+
+			return requestResult;
+		}
+
+		// getBPlace(docsRelated);
+
+//-------------------------------- Определение места смерти -----------------------------------
+// на основании koordinaty_vibitiya
+
+//-------------------------------- Определение ВПП -----------------------------------
+
+		if (vppPlace != '') {
+			// 1) проверяем в справочнике
+			var vppQ = {
+				query: {
+					query_string: {
+						query: vppPlace,
+						default_operator: "AND"
+					}
+				},
+				size: 1
+			};
+			getDbData({
+				url: getEsProtocol() + getEsUrl() + '/ind/pamyat/vpp/_search',
+				method: 'post',
+				data: JSON.stringify(vppQ),
+				dataType: 'json',
+				error: function (x, s, t) {
+				},
+				success: function (data) {
+					if (data.hits.total > 0 && data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null) {
+						$('.vppPlace').css({display: 'inline-block'});
+						var r = data.hits.hits[0]._source;
+						vppPlaceObject = {results: [], status: 'OK'};
+						vppPlaceObject.results.push({
+							geometry: {
+								location: {
+									lat: r.shirota,
+									lng: r.dolgota
+								}
+							},
+							name: r.vpp,
+							locality: r.country + ', ' + r.locality
+						});
+					}
+				}
+			});
+		}
+
+//-------------------------------- Определение Лагеря -----------------------------------
+
+		if (lPlace != '') {
+			lPlace = JSON.parse(lPlace);
+			if (lPlace != null) {
+				for (var lager in lPlace) {
+					if (typeof lPlace[lager].name === 'object') {
+						lPlace[lager].name = lPlace[lager].name.join(' ').trim();
+					}
+					// 1) проверяем в справочнике
+					var lQ = {
+						query: {
+							bool: {
+								must: [
+									{
+										match: {
+											other: {
+												query: lPlace[lager].name,
+												operator: "and"
+											}
+										}
+									}
+								]
+							}
+						},
+						sort: [
+							{
+								date_to: {
+									order: "asc"
+								}
+							},
+							{
+								date_from: {
+									order: "asc"
+								}
+							}
+						]
+					};
+					getDbData({
+						url: getEsProtocol() + getEsUrl() + '/ind/pamyat/camp/_search',
+						method: 'post',
+						data: JSON.stringify(lQ),
+						dataType: 'json',
+						error: function (x, s, t) {
+						},
+						success: function (data) {
+							if (data.hits.total > 0 && data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null) {
+								$('.lPlace').css({display: 'inline-block'});
+								var r = data.hits.hits[0]._source;
+								//console.log(data.hits.hits);
+								if (data.hits.total > 1) {
+									var d = null; // дата для выбора лагеря
+									if (lPlace[lager].date_to) {   //дата смерти
+										d = new Date(lPlace.date_to);
+									} else if (lPlace[lager].date_plen) {
+										d = new Date(lPlace.date_plen);
+									}
+
+									var n = null;   // новый
+									var dF = null;
+									var dT = null;
+
+									if (d != null) {
+										for (var i in data.hits.hits) {
+											var y = data.hits.hits[i]._source;
+											if (y.date_from !== null) var dF = new Date(y.date_from.substring(0, 10));
+											if (y.date_to !== null) var dT = new Date(y.date_to.substring(0, 10));
+
+											if (dF != null && dT != null && dF < d) {
+												if (dT != null && dT > d) {
+													//console.log(dT, d, 'подходит по началу периода и по концу периода', y);
+													n = y;
+												}
+											} else if (dF != null && dT == null && dF < d) {
+												//console.log(dF, d, 'подходит только по началу периода', y);
+												n = y;
+											} else if (dF == null && dT != null && dT > d) {
+												//console.log(dT, d, 'подходит только по концу периода', y);
+												n = y;
+											} else if (dF == null && dT == null) {
+												//console.log(dT, d, 'подходит нулевой период', y);
+												n = y;
+											}
+											dF = null;
+											dT = null;
+										}
+									}
+								}
+
+								if (n != null) r = n;
+
+								if (lPlaceObject == null) lPlaceObject = {results: [], status: 'OK'};
+								lPlaceObject.results.push({
+									geometry: {
+										location: {
+											lat: r.shirota,
+											lng: r.dolgota
+										}
+									},
+									other: r.other,
+									camp: r.camp,
+									id: r.id,
+									mesto_pleneniya: lPlace[lager].mesto_pleneniya || '',
+									date_to: lPlace[lager].date_to || lPlace[lager].date_plen,
+									date_from: lPlace[lager].date_plen || lPlace[lager].date_to,
+									sudba: lPlace[lager].sudba || '',
+									period: (r.period.length > 1 ? r.period : ''),
+									locality: r.country + ', ' + ((r.region != '' && r.region != null) ? r.region + ', ' : '') + r.locality
+								});
+							}
+						}
+					});
+				}
+			}
+		}
+
+//-------------------------------- Определение Госпиталя -----------------------------------
+
+		if (gPlace != '') {
+			gPlace = JSON.parse(gPlace);
+			if (typeof gPlace.name === 'object') {
+				gPlace.name = gPlace.name.join(' ').trim();
+			}
+			if (gPlace != null) {
+				// 1) проверяем в справочнике
+				var gQ = {
+					"query": {
+						"bool": {
+							"should": [
+								{
+									"match": {
+										"hospital": {
+											"query": gPlace.name,
+											"operator": "and"
+										}
+									}
+								},
+								{
+									"match": {
+										"more": {
+											"query": gPlace.name,
+											"operator": "and"
+										}
+									}
+								}
+							]
+						}
+					},
+					"sort": [
+						{
+							"date_to": {
+								"order": "asc"
+							}
+						},
+						{
+							"date_from": {
+								"order": "asc"
+							}
+						},
+						{
+							"single_data": {
+								"order": "asc"
+							}
+						},
+						{
+							"shirota": {
+								"order": "asc"
+							}
+						}
+					],
+					size: 1000
+				};
+				getDbData({
+					url: getEsProtocol() + getEsUrl() + '/ind/pamyat/hospital/_search',
+					method: 'post',
+					data: JSON.stringify(gQ),
+					dataType: 'json',
+					error: function (x, s, t) {
+					},
+					success: function (data) {
+						if (data.hits.total > 0 /*&& data.hits.hits[0]._source.shirota && data.hits.hits[0]._source.shirota != null*/) {
+							var result = {
+								r: [],
+								rS: [],
+								rFT: [],
+								rF: [],
+								rT: [],
+								rFull: []
+							};
+							//console.log(data.hits.hits);
+							if (data.hits.total > 0) {
+								var d = null; // дата для выбора лагеря
+								if (gPlace.date_out) {   //дата смерти
+									d = new Date(gPlace.date_out);
+								}
+
+								var dF = null;
+								var dT = null;
+								var dS = null;
+								if (gPlaceObject == null) gPlaceObject = {results: [], status: 'OK'};
+
+								if (d != null) {
+									for (var i in data.hits.hits) {
+										var y = data.hits.hits[i]._source;
+										//n = y;
+										if (y.date_from !== null) var dF = new Date(y.date_from.substring(0, 10));
+										if (y.date_to !== null) var dT = new Date(y.date_to.substring(0, 10));
+										if (y.single_data !== null) var dS = new Date(y.single_data.substring(0, 10));
+
+										if (dS != null && dS == d) {
+											//console.log(dT, d, 'подходит по точной дате', y);
+											result.rS.push(y);
+											result.rFull.push(y);
+										} else if (dF != null && dT != null && dF <= d) {
+											if (dT != null && dT > d) {
+												//console.log(dT, d, 'подходит по началу периода и по концу периода', y);
+												result.rFT.push(y);
+												result.rFull.push(y);
+											}
+										} else if (dF != null && dT == null && dF <= d) {
+											//console.log(dF, d, 'подходит только по началу периода', y);
+											result.rF.push(y);
+											result.rFull.push(y);
+										} else if (dF == null && dT != null && dT >= d) {
+											//console.log(dT, d, 'подходит только по концу периода', y);
+											result.rT.push(y);
+											result.rFull.push(y);
+										} else if (dF == null && dT == null && dS == null) {
+											//console.log(dT, d, 'подходит нулевой период', y);
+											result.r.push(y);
+											result.rFull.push(y);
+										}
+										dF = null;
+										dT = null;
+
+									}
+								} else {
+									// закидываем все
+								}
+
+								//if (n != null) r = n;
+
+								//console.log('подходит по точной дате',result.rS);
+								//console.log('подходит по началу периода и по концу периода',result.rFT);
+								//console.log('подходит только по началу периода',result.rF);
+								//console.log('подходит только по концу периода',result.rT);
+								//console.log('подходит нулевой период',result.r);
+
+
+								if (result.rS.length > 0) {
+									result.rFull = result.rS;
+								} else if (result.rFT.length > 0) {
+									result.rFull = result.rFT;
+								} else if (result.rF.length > 0 || result.rT.length > 0) {
+									result.rFull = result.rF;
+									for (var iii in result.rT) {
+										result.rFull.push(result.rT[iii]);
+									}
+								}
+
+								for (var g in result.rFull) {
+									if (result.rFull[g].shirota != null) {
+										$('.gPlace').css({display: 'inline-block'});
+										gPlaceObject.results.push({
+											geometry: {
+												location: {
+													lat: result.rFull[g].shirota,
+													lng: result.rFull[g].dolgota
+												}
+											},
+											id: result.rFull[g].id,
+											name: gPlace.name,
+											prichina_vibitiya: gPlace.prichina_vibitiya,
+											date_to: gPlace.date_out,
+											date_from: gPlace.date_out,
+											period: (result.rFull[g].period.length > 1 ? result.rFull[g].period : '') + (result.rFull[g].single_data != null && result.rFull[g].single_data.length > 1 ? result.rFull[g].single_data.substring(0, 10) : ''),
+											locality: ((result.rFull[g].country != '' && result.rFull[g].country != null) ? result.rFull[g].country + ', ' : '') +
+												((result.rFull[g].region != '' && result.rFull[g].region != null) ? result.rFull[g].region + ', ' : '') +
+												((result.rFull[g].district != '' && result.rFull[g].district != null) ? result.rFull[g].district + ', ' : '') +
+												((result.rFull[g].locality != '' && result.rFull[g].locality != null) ? result.rFull[g].locality : '')
+										});
+									}
+								}
+
+
+							}
+
+							//console.log(gPlaceObject);
+						}
+					}
+				});
+			}
+		}
+	} catch (e) {
+
+	}
+})
+;
+
+// Вид навигации по страницам документа //
+
+$(document).ready(function () {
+	imageViewerControlsLayout();
+
+	setTimeout(function () {
+		imageViewerControlsLayout();
+	}, 500);
+
+	setTimeout(function () {
+		imageViewerControlsLayout();
+	}, 1000);
+
+	setTimeout(function () {
+		imageViewerControlsLayout();
+	}, 1500);
+
+	setTimeout(function () {
+		imageViewerControlsLayout();
+	}, 2000);
+
+	$(window).on('resize', function () {
+		imageViewerControlsLayout();
+	});
+
+	$(document).on('click', '.heroes_card__tabs-item', function () {
+		imageViewerControlsLayout();
+		if ($(this).attr('rel') == 'information') {
+			$('.js-hero-card-wrap-bg').addClass('active');
+			if ($(this).data('person-id') !== undefined && typeof $(this).data('person-id') == 'number') {
+				History.replaceState(null, document.title, '/heroes/person-hero' + $(this).data('person-id') + '/' + window.location.search);
+			}
+		} else {
+			$('.js-hero-card-wrap-bg').removeClass('active');
+		}
+	});
+});
+
+function imageViewerControlsLayout() {
+	var $el = $('.js-imageviewer-controls');
+
+	if ($el.length) {
+		$el.each(function () {
+			var $this = $(this),
+				$left = $this.find('.js-imageviewer-controls-left'),
+				$center = $this.find('.js-imageviewer-controls-center'),
+				$right = $this.find('.js-imageviewer-controls-right'),
+				$clear = $this.find('.controls-center-clear'),
+				dropdown_class = 'dropdown',
+				list_class = 'list',
+				offset = 0,
+				needle_width = 0;
+
+			$clear.removeClass('active');
+
+			if (window.innerWidth >= 1600) {
+				needle_width = $this.width() - $left.width() - $right.width() - offset;
+				$right.find(".icon.second").removeClass("hint--bottom-left");
+			} else if (window.innerWidth >= 1280) {
+				$right.find(".icon.second").removeClass("hint--bottom-left");
+			} else {
+				$right.find(".icon.second").addClass("hint--bottom-left");
+			}
+
+			if (getTotalWidth($center.find('.js-imageviewer-controls-center-item')) > 0) {
+				if (!$clear.hasClass('active')) {
+					$clear.addClass('active');
+				}
+			} else {
+				if ($clear.hasClass('active')) {
+					$clear.removeClass('active');
+				}
+			}
+
+			if (needle_width > getTotalWidth($center.find('.js-imageviewer-controls-center-item:visible'))) {
+				if ($clear.hasClass('active')) {
+					$clear.removeClass('active');
+				}
+			} else {
+				if (!$clear.hasClass('active')) {
+					$clear.addClass('active');
+				}
+			}
+		})
+	}
+}
+
+function getTotalWidth($elements) {
+	var width = 0;
+
+	$elements.each(function () {
+		width += $(this).outerWidth();
+	});
+
+	return width;
+}
